@@ -5,7 +5,7 @@
 #   - each "profile" has 3 elements:
 #     - profile-specific config file (ini, things like name, options
 #       to override defaults (eg, template files), etc)
-#     - feed list (txt, one url per line)
+#     - feed list (txt, one url per line, eventually move to OPML)
 #     - state file (json, last updated, etc)
 #   - general config includes ini file and template files
 #     - goes in .config/rss-digest
@@ -15,7 +15,7 @@
 # - use jinja2 for template
 
 from datetime import datetime
-from time import struct_time, strftime
+from time import struct_time, strftime, gmtime
 from os.path import join
 from copy import deepcopy
 import json
@@ -43,7 +43,6 @@ class FeedList:
         
         self.config = config
         self.name = name
-        self.config.load_data() # loading the existing feeds from file
         self.new_feeds = None
     
     def get_feeds(self, from_file=False):
@@ -55,7 +54,6 @@ class FeedList:
                 for line in f:
                     feeds.append(feedparser.parse(line.strip()))
             self.feeds = feeds
-
     
     def update_config(self):
         update_time = datetime.now().timetuple()
@@ -66,22 +64,30 @@ class FeedList:
     
     def load_feeds(self):
         # Load feeds from file
-        with open(self.data_file) as f:
+        with open(self.config.data_file) as f:
             self.feeds = json.load(f)
     
     def update_feeds(self):
+        # TODO: Currently we rely on feedlist and feeddata being the 
+        # same length and in the same order.  This won't work if the
+        # list of feeds is changed.  We need to either do this more
+        # flexible so that it doesn't rely on strict alignment, or else
+        # control access to feedlist such that requisite changes are
+        # always made to feeddata.  This may be easiest.
         new_feeds = []
         for u, f in zip(self.config.feedlist, self.config.feeddata):
             new_feeds.append(self.get_new(u, f))
-        self.new_feeds = new_feeds
+        self.feeds = new_feeds
     
-    def save_feeds(self, backup=False):
-        if backup:
-            backup_file = join(config.dir_path, 'feeddata',
-                '{}.json.backup'.format(name))
-            rename(self.data_file, backup_file)
-        with open(self.feed_file, 'w') as f:
-            json.dump(self.feeds, f)
+    # Load and save state and feed data
+    
+    def save(self):
+        self.config.save_data(self.feeds)
+        self.config.save_state()
+    
+    def load(self):
+        self.config.load_data()
+        self.config.load_state()        
     
     def filter_old(self, new_feed, updated_parsed):
         # updated_parsed is when the OLD feed was last updated
@@ -95,9 +101,16 @@ class FeedList:
                         # in place
     
     def get_new(self, url, feed):
+        """Takes a URL and an existing feed object, and returns an
+        updated feed object with only the new entries since the existing
+        object was last updated
+        """
         etag = feed.get('etag')
         modified = feed.get('modified')
         new_feed = feedparser.parse(url, etag=etag, modified=modified)
+        
+        # Handle errors (there are many more; eventually we should beef
+        # this up and maybe move it to a different function)
         if new_feed.get('bozo', 0):
             # Feed not well formed
             raise new_feed['bozo_exception']
@@ -110,10 +123,12 @@ class FeedList:
             new_feed['entries'] = []
         else:
             self.filter_old(new_feed, feed['updated_parsed'])
+        # TODO: Should the below be localtime instead of gmtime?
+        self.config.set_last_updated(url, gmtime())
         return new_feed
     
     def new_entries_count(self, feed):
-        return len(feed.entries)
+        return len(feed['entries'])
     
     @property
     def new_entries_total(self):
@@ -128,7 +143,7 @@ class FeedList:
     
     def get_author(self, entry):
         # Helper function to get the author of a feed in a convenient
-        # way.  Should really be in the Entry class but we just use
+        # way.  Should really be in the Entry class but we use
         # feedparser's standard entry class so we just stick it here.
         
         # If "author" is present, use it.

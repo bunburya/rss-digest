@@ -22,7 +22,7 @@ class Config:
         self.name = name
         self.conf_dir = self.get_conf_dir()
         self.profile_dir = self.get_profile_dir()
-        self.load_state()
+        self.load_list()
     
     def get_conf_dir(self):
         # Get the root config directory in which all the config files
@@ -73,7 +73,8 @@ class Config:
     def load_data(self):
         self.feeddata = self._load_json(self.data_file)
 
-    def save_data(self):
+    def save_data(self, data):
+        self.feeddata = data
         self._save_json(self.feeddata, self.data_file)
     
     @property
@@ -91,7 +92,16 @@ class Config:
     def get_last_updated(self, url=None):
         # if url is None, this returns the last update of the feedlist
         # as a whole (same goes for setter function below)
-        return self.state.get('last_updated', {}).get(url)
+        updated_dict = self.state.get('last_updated', {})
+        if url is None and None not in updated_dict:
+            # If we haven't set a specific value for the feedlist as a
+            # whole, just return the most recent URL-specific value
+            try:
+                return max(updated_dict.values())
+            except ValueError:
+                return None
+        else:
+            return updated_dict.get(url)
     
     def set_last_updated(self, last_updated, url=None):
         if 'last_updated' not in self.state:
