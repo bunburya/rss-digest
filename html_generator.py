@@ -52,6 +52,13 @@ class HTMLGenerator:
         gen_time = datetime.now().strftime(self.config.time_format)
         
         current_datetime = strftime(self.config.datetime_format)
+        last_update = self.config.get_last_updated()
+        if last_update is not None:
+            last_update = strftime(self.config.date_format,
+                            self.config.get_last_updated())
+        
+        empty_feeds = feedlist.empty_feeds
+        empty_feed_titles = '; '.join(f['feed']['title'] for f in empty_feeds)
 
         email_data = {
             'name': self.config.user_name,
@@ -67,7 +74,12 @@ class HTMLGenerator:
             'new_entries_count': feedlist.new_entries_count,
             'get_author': feedlist.get_author,
             'get_date': lambda e: feedlist.get_date(e,
-                self.config.datetime_format)
+                self.config.datetime_format),
+            'last_update': last_update,
+            'empty_feeds': empty_feeds,
+            'non_empty_feeds': feedlist.non_empty_feeds,
+            'empty_feed_titles': empty_feed_titles,
+            'len': len
             #finish
             }
             

@@ -6,6 +6,7 @@
 from json import dump, load
 from os import mkdir
 from os.path import exists, expanduser, join
+from time import struct_time
 
 # change later
 DEFAULT_CONFIG_FILE = '/home/alan/bin/rss-digest/rss-digest.ini'
@@ -60,10 +61,14 @@ class Config:
 
     def load_state(self):
         self.state = self._load_json(self.state_file)
+        self.new_state = {}
         # If there is no state, assume this is the first run.
         self.first_run = not self.state
 
     def save_state(self):
+        if self.new_state:
+            self.state = self.new_state
+            self.new_state = {}
         self._save_json(self.state, self.state_file)
     
     @property
@@ -90,20 +95,42 @@ class Config:
             f.writelines('\n'.join(self.feedlist))
 
     def get_last_updated(self, url=None):
-        # if url is None, this returns the last update of the feedlist
+        # If url is None, this returns the last update of the feedlist
         # as a whole (same goes for setter function below)
+        
+        # NOTE:  We don't currently provide a way to access new_state,
+        # because I think when you are checking state you will always
+        # want the pre-existing state.
+        
+        print(self.state)
+        
         updated_dict = self.state.get('last_updated', {})
         if url is None and None not in updated_dict:
             # If we haven't set a specific value for the feedlist as a
             # whole, just return the most recent URL-specific value
             try:
-                return max(updated_dict.values())
+                result = max(updated_dict.values())
             except ValueError:
-                return None
+                result = None
         else:
-            return updated_dict.get(url)
+            result = updated_dict.get(url)
+        
+        if result is None:
+            return result
+        else:
+            return struct_time(result)
     
-    def set_last_updated(self, last_updated, url=None):
-        if 'last_updated' not in self.state:
-            self.state['last_updated'] = {}
-        self.state['last_updated'][url] = last_updated
+    def set_last_updated(self, last_updated, new=True, url=None):
+        # if new == True, we save to self.new_state instead of
+        # self.state.  new_state is then copied to state when saving.
+        # This is to allow us to access the old last_updated value when
+        # generating HTML.  True is the default value because I think
+        # you will always want to save to the buffer.
+        
+        if new:
+            state = self.new_state
+        else:
+            state = self.state
+        if 'last_updated' not in state:
+            state['last_updated'] = {}
+        state['last_updated'][url] = last_updated

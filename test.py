@@ -25,6 +25,7 @@ def test2():
     f.update_feeds()
     h = html_generator.HTMLGenerator(c)
     html = h.generate_html(f)
+    #f.save()
     return html
 
 if __name__ == '__main__':

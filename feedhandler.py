@@ -79,6 +79,14 @@ class FeedList:
             new_feeds.append(self.get_new(u, f))
         self.feeds = new_feeds
     
+    @property
+    def non_empty_feeds(self):
+        return [f for f in self.feeds if f['entries']]
+        
+    @property
+    def empty_feeds(self):
+        return [f for f in self.feeds if not f['entries']]
+    
     # Load and save state and feed data
     
     def save(self):
@@ -124,7 +132,7 @@ class FeedList:
         else:
             self.filter_old(new_feed, feed['updated_parsed'])
         # TODO: Should the below be localtime instead of gmtime?
-        self.config.set_last_updated(url, gmtime())
+        self.config.set_last_updated(gmtime(), new=True, url=url)
         return new_feed
     
     def new_entries_count(self, feed):
