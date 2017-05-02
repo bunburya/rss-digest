@@ -24,12 +24,34 @@ import feedparser
 
 class HTTPError(BaseException): pass
 
-class FeedList:
+class FeedURLList:
     
-    """This class represents a list of feeds.  The individual feeds are
-    objects returned by feedparser.parse.  It contains methods to load
-    the feeds from file, load a list of URLs and fetch the feeds, update
-    the feeds in the list, and save the list back to file.
+    def __init__(self, config):
+        self.config = config
+    
+    def add_url(self, url):
+        url = url.rstrip('/')
+        if url in self.config.feedlist:
+            return
+        self.config.feedlist.append(url)
+        self.config.feeddata.append({})
+    
+    def remove_url(self, url):
+        url = url.rstrip('/')
+        try:
+            i = self.config.feedlist.index(url)
+        except ValueError:
+            return
+        self.config.feedlist.pop(i)
+        self.config.feeddata.pop(i)
+        
+
+class FeedObjectList:
+    
+    """This class represents a list of feed objects.  The individual
+    feeds are objects returned by feedparser.parse.  It contains methods
+    to load the feeds from file, load a list of URLs and fetch the
+    feeds, update the feeds in the list, and save the list back to file.
     """ 
     
     # - load existing data from file
@@ -39,10 +61,10 @@ class FeedList:
     # - generate html from filtered feeds
     # - send email
         
-    def __init__(self, config, name):
+    def __init__(self, config):
         
         self.config = config
-        self.name = name
+        self.name = config.name
         self.new_feeds = None
     
     def get_feeds(self, from_file=False):
@@ -99,6 +121,10 @@ class FeedList:
     
     def filter_old(self, new_feed, updated_parsed):
         # updated_parsed is when the OLD feed was last updated
+        if updated_parsed is None:
+            # If there is no updated_parse, feed is probably new
+            # so there is nothing to be done.
+            return new_feed
         entries = []
         for e in new_feed['entries']:
             updated = self.get_date(e)
@@ -130,7 +156,7 @@ class FeedList:
             new_feed = deepcopy(feed)
             new_feed['entries'] = []
         else:
-            self.filter_old(new_feed, feed['updated_parsed'])
+            self.filter_old(new_feed, feed.get('updated_parsed'))
         # TODO: Should the below be localtime instead of gmtime?
         self.config.set_last_updated(gmtime(), new=True, url=url)
         return new_feed
@@ -178,11 +204,3 @@ class FeedList:
             return strftime(fmt, date_struct)
         else:
             return date_struct
-        
-
-def main(args):
-    return 0
-
-if __name__ == '__main__':
-    import sys
-    sys.exit(main(sys.argv))

@@ -78,8 +78,9 @@ class Config:
     def load_data(self):
         self.feeddata = self._load_json(self.data_file)
 
-    def save_data(self, data):
-        self.feeddata = data
+    def save_data(self, data=None):
+        if data is not None:
+            self.feeddata = data
         self._save_json(self.feeddata, self.data_file)
     
     @property
@@ -102,7 +103,7 @@ class Config:
         # because I think when you are checking state you will always
         # want the pre-existing state.
         
-        print(self.state)
+        #print(self.state)
         
         updated_dict = self.state.get('last_updated', {})
         if url is None and None not in updated_dict:
