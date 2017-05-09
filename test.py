@@ -3,7 +3,7 @@
 #
 #  test.py
 
-import html_generator, feedhandler, config
+import html_generator, feedhandler, config, email_handler
 
 def test_run1():
     
@@ -46,6 +46,12 @@ def test_remove(name, url):
     c.save_list()
     return c.feedlist
 
+def test_email():
+    
+    c = config.Config('test')
+    e = email_handler.EmailHandler(c)
+    e.send_email('this is a test')
+
 if __name__ == '__main__':
     from sys import argv
     cmd = argv[1]
@@ -59,3 +65,5 @@ if __name__ == '__main__':
         name = argv[2]
         url = argv[3]
         print(test_remove(name, url))
+    elif cmd == 'email':
+        test_email()

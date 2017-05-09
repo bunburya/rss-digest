@@ -13,6 +13,7 @@ DEFAULT_CONFIG_FILE = '/home/alan/bin/rss-digest/rss-digest.ini'
 
 class Config:
     
+    # Move these to config file, then load from config file
     user_name = 'Alan'
     dir_path = '/home/alan/bin/rss-digest/test'
     date_format = '%A %d %B %Y'
@@ -48,12 +49,22 @@ class Config:
             with open(fpath) as f:
                 return load(f)
         except FileNotFoundError:
-            # No state file so probably first run.
             return {}
     
     def _save_json(self, data, fpath):
         with open(fpath, 'w') as f:
             dump(data, f)
+    
+    @property
+    def email_file(self):
+        return join(self.profile_dir, 'email.json')
+    
+    def load_email_data(self):
+        self.email_data = self._load_json(self.email_file)
+    
+    def save_email_data(self, data):
+        self.email_data = data
+        self._save_json(data, self.email_file)
     
     @property
     def state_file(self):
