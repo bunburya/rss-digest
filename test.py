@@ -49,8 +49,13 @@ def test_remove(name, url):
 def test_email():
     
     c = config.Config('test')
+    f = feedhandler.FeedObjectList(c)
+    f.load()
+    f.update_feeds()
+    h = html_generator.HTMLGenerator(c)
+    html = h.generate_html(f)
     e = email_handler.EmailHandler(c)
-    e.send_email('this is a test')
+    e.send_email(html)
 
 if __name__ == '__main__':
     from sys import argv

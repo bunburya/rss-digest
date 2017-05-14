@@ -1,0 +1,67 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta charset="UTF-8">
+</head>
+
+<body style="font-family: sans-serif;
+            margin: 5%;
+            background: rgb(250, 250, 250) none repeat scroll 0% 0%;
+            color: rgb(7, 3, 66);">
+    Hi {{ name }},
+    
+    <p>This is your RSS feed digest for {{ date }}.
+    
+    {% if last_update %} Since your last update on {{ last_update }}, there
+    {% else %} There {% endif %} ha{{ 's' if new_entries_total == 1 else 've' }}
+    been {{ new_entries_total }} new post{{ 's' if new_entries_total > 1 }} to
+    {{ updated_feeds_count }} of your {{ subscribed_feeds_count }} subscribed
+    feeds.</p>
+        
+    <table style="  table-layout: fixed;
+                    word-wrap: break-word;
+                    width: 100%;
+                    padding: 10px;
+                    background: rgba(68, 18, 18, 0.08) none repeat scroll 0% 0%
+                ;">
+        {% for f in non_empty_feeds %}
+        
+            <tr>
+            <td style="table-layout: fixed;
+                    word-wrap: break-word;
+                    width: 100%;
+                    padding: 10px;
+                    background: rgba(68, 18, 18, 0.08) none repeat scroll 0% 0%">
+            <b>{{ f.feed.title }}</b> - {{ new_entries_count(f) }} new
+            entr{{ 'ies' if new_entries_count(f) > 1 else 'y' }}</td></tr>
+            
+            {% for e in f.entries %}
+            <tr>
+            <td style="table-layout: fixed;
+                    word-wrap: break-word;
+                    width: 100%;
+                    padding: 10px;
+                    background: rgba(68, 18, 18, 0.08) none repeat scroll 0% 0%">
+                <a href="{{ e.link }}" style="color: rgb(140, 60, 60);">
+                {{ e.title }}</a> (submitted by {{ get_author(e) }}
+                on {{ get_date(e) }})
+            </td></tr>
+            {% endfor %}
+            
+        {% endfor %}
+    </table> 
+    
+    {% if empty_feeds %}
+    <p>
+        {% if len(empty_feeds) == 1 %}
+            {{ empty_feeds[0]['feed']['title'] }} has no new entries.
+        {% else %}
+            {{ len(empty_feeds) }} of your subscribed feeds have no new
+            entries since your last update: {{ empty_feed_titles }}
+        {% endif %}
+    </p>
+    {% endif %}
+	
+</body>
+
+</html>

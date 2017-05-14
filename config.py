@@ -15,7 +15,7 @@ class Config:
     
     # Move these to config file, then load from config file
     user_name = 'Alan'
-    dir_path = '/home/alan/bin/rss-digest/test'
+    dir_path = '/home/alan/bin/rss-digest/'
     date_format = '%A %d %B %Y'
     time_format = '%H:%M'
     datetime_format = '{} at {}'.format(date_format, time_format)
