@@ -59,6 +59,7 @@ class HTMLGenerator:
         
         empty_feeds = feedlist.empty_feeds
         empty_feed_titles = '; '.join(f['feed']['title'] for f in empty_feeds)
+        failures = feedlist.failures.keys()
 
         email_data = {
             'name': self.config.user_name,
@@ -79,6 +80,7 @@ class HTMLGenerator:
             'empty_feeds': empty_feeds,
             'non_empty_feeds': feedlist.non_empty_feeds,
             'empty_feed_titles': empty_feed_titles,
+            'failures': feedlist.failures,
             'len': len
             #finish
             }

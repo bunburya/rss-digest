@@ -24,6 +24,8 @@ import feedparser
 
 class HTTPError(BaseException): pass
 
+class FeedParseError(BaseException): pass
+
 class FeedURLList:
     
     def __init__(self, config):
@@ -66,15 +68,40 @@ class FeedObjectList:
         self.config = config
         self.name = config.name
         self.new_feeds = None
+        self.failures = {}
+    
+    def get_feed(self, url, **kwargs):
+        fail = False
+        try:
+            feed = feedparser.parse(url, **kwargs)
+        except BaseException as e:
+            fail = True
+            self.failures[url] = e
+        
+        if feed.get('bozo', 0):
+            # Feed not well formed
+            fail = True
+            self.failures[url] = feed['bozo_exception']
+        elif feed['status'] >= 400 and feed['status'] <= 599:
+            # HTTP error (TODO: split into temporary and permanent)
+            fail = True
+            self.failures[url] = HTTPError(feed['status'])
+        elif (feed['status'] == 304) or (not feed['entries']):
+            # Not modified or feed is empty.  Not really a fail, but
+            # we return nothing all the same.
+            fail = True
+        
+        return feed if not fail else None
     
     def get_feeds(self, from_file=False):
+        self.failures = {}
         if from_file:
             self.feeds = self.config.data
         else:
             feeds = []
             with open(self.config.list_file) as f:
                 for line in f:
-                    feeds.append(feedparser.parse(line.strip()))
+                    feeds.append(self.get_feed(line.strip()))
             self.feeds = feeds
     
     def update_config(self):
@@ -96,6 +123,7 @@ class FeedObjectList:
         # flexible so that it doesn't rely on strict alignment, or else
         # control access to feedlist such that requisite changes are
         # always made to feeddata.  This may be easiest.
+        self.failures = {}
         new_feeds = []
         for u, f in zip(self.config.feedlist, self.config.feeddata):
             new_feeds.append(self.get_new(u, f))
@@ -141,23 +169,13 @@ class FeedObjectList:
         """
         etag = feed.get('etag')
         modified = feed.get('modified')
-        new_feed = feedparser.parse(url, etag=etag, modified=modified)
-        
-        # Handle errors (there are many more; eventually we should beef
-        # this up and maybe move it to a different function)
-        if new_feed.get('bozo', 0):
-            # Feed not well formed
-            raise new_feed['bozo_exception']
-        elif new_feed['status'] >= 400 and new_feed['status'] <= 599:
-            # HTTP error (TODO: split into temporary and permanent)
-            raise HTTPError(new_feed['status'])
-        elif (new_feed['status'] == 304) or (not new_feed['entries']):
-            # not modified or feed is empty
-            new_feed = deepcopy(feed)
+        new_feed = self.get_feed(url, etag=etag, modified=modified)
+        if new_feed is None:
+            new_feed = feed
             new_feed['entries'] = []
         else:
             self.filter_old(new_feed, feed.get('updated_parsed'))
-        # TODO: Should the below be localtime instead of gmtime?
+            # TODO: Should the below be localtime instead of gmtime?
         self.config.set_last_updated(gmtime(), new=True, url=url)
         return new_feed
     
