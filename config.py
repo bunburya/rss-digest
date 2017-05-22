@@ -8,6 +8,8 @@ from os import mkdir
 from os.path import exists, expanduser, join
 from time import struct_time
 
+from feedlist import FeedList
+
 # change later
 DEFAULT_CONFIG_FILE = '/home/alan/bin/rss-digest/rss-digest.ini'
 
@@ -96,11 +98,10 @@ class Config:
     
     @property
     def list_file(self):
-        return join(self.profile_dir, 'list.txt')
+        return join(self.profile_dir, 'feeds.opml')
     
     def load_list(self):
-        with open(self.list_file) as f:
-            self.feedlist = [line.strip() for line in f]
+        self.feedlist = FeedList(self.list_file)
     
     def save_list(self):
         with open(self.list_file, 'w') as f:

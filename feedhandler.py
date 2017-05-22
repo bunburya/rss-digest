@@ -126,7 +126,7 @@ class FeedObjectList:
         self.failures = {}
         new_feeds = []
         for u, f in zip(self.config.feedlist, self.config.feeddata):
-            new_feeds.append(self.get_new(u, f))
+            new_feeds.append(self.get_new(u['xmlUrl'], f))
         self.feeds = new_feeds
     
     @property
