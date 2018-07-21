@@ -1,9 +1,5 @@
 #  feedhandler.py
 
-# TODO:
-# - i think the next thing is just to create an interface that allows
-#   us to add blogs, remove them, etc 
-
 from datetime import datetime
 from time import struct_time, strftime, gmtime
 from os.path import join
@@ -31,10 +27,10 @@ class FeedObjectList:
     # - generate html from filtered feeds
     # - send email
         
-    def __init__(self, config):
+    def __init__(self, profile):
         
-        self.config = config
-        self.name = config.name
+        self.profile = profile
+        self.name = profile.name
         self.new_feeds = None
         self.failures = {}
     
@@ -68,24 +64,20 @@ class FeedObjectList:
     def get_feeds(self, from_file=False):
         self.failures = {}
         if from_file:
-            self.feeds = self.config.data
+            self.feeds = self.profile.feeddata
         else:
-            feeds = []
-            with open(self.config.list_file) as f:
-                for line in f:
-                    feeds.append(self.get_feed(line.strip()))
-            self.feeds = feeds
+            self.feeds = self.profile.feedlist.feeds
     
-    def update_config(self):
+    def update_profile(self):
         update_time = datetime.now().timetuple()
-        self.config.set_last_updated(update_time)
+        self.profile.set_last_updated(update_time)
         for url in self.feed_urls:
-            self.config.set_last_updated(update_time, url)
+            self.profile.set_last_updated(update_time, url)
         # finish
     
     def load_feeds(self):
         # Load feeds from file
-        with open(self.config.data_file) as f:
+        with open(self.profile.data_file) as f:
             self.feeds = json.load(f)
     
     def update_feeds(self):
@@ -97,7 +89,7 @@ class FeedObjectList:
         # always made to feeddata.  This may be easiest.
         self.failures = {}
         new_feeds = []
-        for u, f in zip(self.config.feedlist, self.config.feeddata):
+        for u, f in zip(self.profile.feedlist, self.profile.feeddata):
             new_feeds.append(self.get_new(u['xmlUrl'], f))
         self.feeds = new_feeds
     
@@ -112,12 +104,12 @@ class FeedObjectList:
     # Load and save state and feed data
     
     def save(self):
-        self.config.save_data(self.feeds)
-        self.config.save_state()
+        self.profile.save_data(self.feeds)
+        self.profile.save_state()
     
     def load(self):
-        self.config.load_data()
-        self.config.load_state()        
+        self.profile.load_data()
+        self.profile.load_state()        
     
     def filter_old(self, new_feed, updated_parsed):
         # updated_parsed is when the OLD feed was last updated
@@ -148,7 +140,7 @@ class FeedObjectList:
         else:
             self.filter_old(new_feed, feed.get('updated_parsed'))
             # TODO: Should the below be localtime instead of gmtime?
-        self.config.set_last_updated(gmtime(), new=True, url=url)
+        self.profile.set_last_updated(gmtime(), new=True, url=url)
         return new_feed
     
     def new_entries_count(self, feed):

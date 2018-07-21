@@ -7,42 +7,65 @@ from json import dump, load
 from os import mkdir
 from os.path import exists, expanduser, join
 from time import struct_time
+from collections import OrderedDict
 from configparser import ConfigParser, ExtendedInterpolation
 
-from feedlist import FeedList
-
-# change later
-DEFAULT_CONFIG_FILE = '/home/alan/bin/rss-digest/rss-digest.ini'
+from feedlist import FeedURLList
 
 class Config:
-        
-    def __init__(self, name):
-        self.name = name
-        self.conf_dir = self.get_conf_dir()
-        self.profile_dir = self.get_profile_dir()
-        self.load_config()
-        self.load_list()
     
+    def __init__(self, profile):
+        self.profile = profile
+        self.conf_dir = self.profile.conf_dir
+        self.config = self.load_config()
+    
+    def get_conf_parser(self):
+        """Create a ConfigParser instance and provide it with default
+        (required) values."""
+        
+        conf_parser = ConfigParser(interpolation=ExtendedInterpolation())
+        conf_parser.read_dict(
+            {'profile': {
+                'user_name': self.profile.name,
+                'dir_path': self.profile.profile_dir,
+                'date_format': '%A %d %B %Y',
+                'time_format': '%H:%M',
+                'datetime_format': '${date_format} at ${time_format}'
+            }})
+        return conf_parser
+        
     def load_config(self, conf_file=None):
         if (conf_file is None) or (not conf_file):
-            conf_file = join(self.profile_dir, 'rss-digest.ini')
-        self.conf_parser = ConfigParser(ExtendedInterpolation())
-        with open(conf_file, 'r') as f:
-            self.conf_parser.read_file(f)
+            conf_file = join(self.profile.profile_dir, 'rss-digest.ini')
+        conf_parser = self.get_conf_parser()
+        try:
+            with open(conf_file, 'r') as f:
+                self.conf_parser.read_file(f)
+        except FileNotFoundError:
+            # if there is no config file, that's okay, because we've
+            # already loaded sane defaults for all required options
+            pass
+        return conf_parser
     
     def save_config(self, conf_file=None):
         if (conf_file is None) or (not conf_file):
-            conf_file = join(self.profile_dir, 'rss-digest.ini')
+            conf_file = join(self.profile.profile_dir, 'rss-digest.ini')
         with open(self.conf_file, 'w') as f:
-            self.conf_parser.write(f)
+            self.config.write(f)
     
-    def get_conf_dir(self):
-        # Get the root config directory in which all the config files
-        # are found.  Eventually use XDG to do this properly.
-        conf_dir = expanduser('~/.config/rss-digest')
-        if not exists(conf_dir):
-            mkdir(conf_dir)
-        return conf_dir
+    def get(self, key):
+        return self.config.get('profile', key, fallback=None)
+    
+
+class Profile:
+    
+    def __init__(self, name, app):
+        self.name = name
+        self.app = app
+        self.conf_dir = self.app.conf_dir
+        self.profile_dir = self.get_profile_dir()
+        self.config = Config(self)
+        self.load_list()
     
     def get_profile_dir(self):
         # Get the directory which contains data specific to this profile
@@ -65,6 +88,8 @@ class Config:
         with open(fpath, 'w') as f:
             dump(data, f)
     
+    # email_data is data required to send the email to the user
+    
     @property
     def email_file(self):
         return join(self.profile_dir, 'email.json')
@@ -75,6 +100,9 @@ class Config:
     def save_email_data(self, data):
         self.email_data = data
         self._save_json(data, self.email_file)
+    
+    # state is data related to the working of the rss-digest programme
+    # itself (as opposed to data relating to feeds, etc)
     
     @property
     def state_file(self):
@@ -91,6 +119,9 @@ class Config:
             self.state = self.new_state
             self.new_state = {}
         self._save_json(self.state, self.state_file)
+    
+    # feeddata is data (entries, etc) relating to feeds that have
+    # already been downloaded
     
     @property
     def data_file(self):
@@ -109,7 +140,7 @@ class Config:
         return join(self.profile_dir, 'feeds.opml')
     
     def load_list(self):
-        self.feedlist = FeedList(self.list_file)
+        self.feedlist = FeedURLList(self.list_file)
     
     def save_list(self):
         with open(self.list_file, 'w') as f:
@@ -155,3 +186,6 @@ class Config:
         if 'last_updated' not in state:
             state['last_updated'] = {}
         state['last_updated'][url] = last_updated
+
+    def get_conf(self, key):
+        return self.config.get(key)

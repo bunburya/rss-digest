@@ -3,11 +3,13 @@
 #
 #  test.py
 
-import html_generator, feedhandler, config, email_handler
+import main, html_generator, feedhandler, feedlist, config, email_handler
+
+app = main.RSSDigest()
 
 def test_run1():
     
-    c = config.Config('test')
+    c = config.Profile('test', app)
     f = feedhandler.FeedObjectList(c, 'test')
     f.get_feeds()
     f.save()
@@ -17,7 +19,7 @@ def test_run1():
 
 def test_run2():
     
-    c = config.Config('test')
+    c = config.Profile('test', app)
     f = feedhandler.FeedObjectList(c)
     f.load()
     f.update_feeds()
@@ -27,7 +29,7 @@ def test_run2():
     return html
 
 def test_add(name, url):
-    c = config.Config('test')
+    c = config.Profile('test', app)
     c.load_data()
     c.load_list()
     f = feedhandler.FeedURLList(c)
@@ -37,7 +39,7 @@ def test_add(name, url):
     return c.feedlist
 
 def test_remove(name, url):
-    c = config.Config('test')
+    c = config.Profile('test', app)
     c.load_data()
     c.load_list()
     f = feedhandler.FeedURLList(c)
@@ -48,7 +50,7 @@ def test_remove(name, url):
 
 def test_email():
     
-    c = config.Config('test')
+    c = config.Profile('test', app)
     f = feedhandler.FeedObjectList(c)
     f.load()
     f.update_feeds()

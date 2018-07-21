@@ -11,10 +11,10 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 class HTMLGenerator:
     
-    def __init__(self, config):
+    def __init__(self, profile):
 
-        self.config = config
-        self.template_dir = join(config.dir_path, 'templates')
+        self.profile = profile
+        self.template_dir = join(profile.conf_dir, 'templates')
         self.jinja_env = Environment(
             loader=FileSystemLoader(self.template_dir),
             autoescape=select_autoescape(['html']))
@@ -49,23 +49,23 @@ class HTMLGenerator:
     def generate_html(self, feedlist):
         #NOTE:  feedlist here is a FeedObjectList, not a FeedList
         
-        gen_date = datetime.now().strftime(self.config.date_format)
-        gen_time = datetime.now().strftime(self.config.time_format)
+        gen_date = datetime.now().strftime(self.profile.get_conf('date_format'))
+        gen_time = datetime.now().strftime(self.profile.get_conf('time_format'))
         
-        current_datetime = strftime(self.config.datetime_format)
-        last_update = self.config.get_last_updated()
+        current_datetime = strftime(self.profile.get_conf('datetime_format'))
+        last_update = self.profile.get_last_updated()
         if last_update is not None:
-            last_update = strftime(self.config.date_format,
-                            self.config.get_last_updated())
+            last_update = strftime(self.profile.get_conf('date_format'),
+                            self.profile.get_last_updated())
         
         empty_feeds = feedlist.empty_feeds
         empty_feed_titles = '; '.join(f['feed']['title'] for f in empty_feeds)
         failures = feedlist.failures.keys()
 
         email_data = {
-            'name': self.config.user_name,
+            'name': self.profile.get_conf('user_name'),
             'date': current_datetime,
-            'first_run': self.config.first_run,
+            'first_run': self.profile.first_run,
             'feedlist': feedlist,
             'new_entries_count': feedlist.new_entries_count,
             'gen_date': gen_date,
@@ -76,7 +76,7 @@ class HTMLGenerator:
             'new_entries_count': feedlist.new_entries_count,
             'get_author': feedlist.get_author,
             'get_date': lambda e: feedlist.get_date(e,
-                self.config.datetime_format),
+                self.profile.get_conf('datetime_format')),
             'get_feed_url': feedlist.get_feed_url,
             'last_update': last_update,
             'empty_feeds': empty_feeds,
@@ -84,7 +84,7 @@ class HTMLGenerator:
             'empty_feed_titles': empty_feed_titles,
             'failures': feedlist.failures,
             'len': len,
-            'max_feed_posts': self.config.max_feed_posts
+            'max_feed_posts': self.profile.get_conf('max_feed_posts')
             #finish
             }
             

@@ -3,9 +3,7 @@
 
 from xml.etree.ElementTree import ElementTree, SubElement, Element, parse, tostring
 
-import feedparser
-
-class FeedList:
+class FeedURLList:
     
     def __init__(self, fpath=None):
         if fpath:

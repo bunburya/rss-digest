@@ -48,7 +48,7 @@
             </td></tr>
             {% endfor %}
             
-            {% if new_entries_count(f) > max_feed_posts %}
+            {% if max_feed_posts and (new_entries_count(f) > max_feed_posts) %}
             <tr>
             <td style="table-layout: fixed;
                     word-wrap: break-word;
