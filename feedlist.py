@@ -6,6 +6,10 @@ from xml.etree.ElementTree import ElementTree, SubElement, Element, parse, tostr
 import feedparser
 
 class FeedList:
+    
+    def __init__(self, fpath=None):
+        if fpath:
+            self.from_opml_file(fpath)
         
     def from_opml_file(self, fpath):
         
@@ -58,6 +62,7 @@ class FeedList:
         f['type'] = _type
         f['text'] = text
         f['xmlUrl'] = xmlUrl
+        f['category'] = f.get('category')
         if not 'title' in f:
             f['title'] = text
         self.feeds.insert(i, f)
@@ -83,6 +88,7 @@ class FeedList:
     
     def __iter__(self):
         self._i = -1
+        return self
     
     def __next__(self):
         self._i += 1

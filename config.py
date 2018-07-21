@@ -7,6 +7,7 @@ from json import dump, load
 from os import mkdir
 from os.path import exists, expanduser, join
 from time import struct_time
+from configparser import ConfigParser, ExtendedInterpolation
 
 from feedlist import FeedList
 
@@ -14,19 +15,26 @@ from feedlist import FeedList
 DEFAULT_CONFIG_FILE = '/home/alan/bin/rss-digest/rss-digest.ini'
 
 class Config:
-    
-    # Move these to config file, then load from config file
-    user_name = 'Alan'
-    dir_path = '/home/alan/bin/rss-digest/'
-    date_format = '%A %d %B %Y'
-    time_format = '%H:%M'
-    datetime_format = '{} at {}'.format(date_format, time_format)
-    
+        
     def __init__(self, name):
         self.name = name
         self.conf_dir = self.get_conf_dir()
         self.profile_dir = self.get_profile_dir()
+        self.load_config()
         self.load_list()
+    
+    def load_config(self, conf_file=None):
+        if (conf_file is None) or (not conf_file):
+            conf_file = join(self.profile_dir, 'rss-digest.ini')
+        self.conf_parser = ConfigParser(ExtendedInterpolation())
+        with open(conf_file, 'r') as f:
+            self.conf_parser.read_file(f)
+    
+    def save_config(self, conf_file=None):
+        if (conf_file is None) or (not conf_file):
+            conf_file = join(self.profile_dir, 'rss-digest.ini')
+        with open(self.conf_file, 'w') as f:
+            self.conf_parser.write(f)
     
     def get_conf_dir(self):
         # Get the root config directory in which all the config files

@@ -35,7 +35,7 @@
             <b>{{ f.feed.title }}</b> - {{ new_entries_count(f) }} new
             entr{{ 'ies' if new_entries_count(f) > 1 else 'y' }}</td></tr>
             
-            {% for e in f.entries %}
+            {% for e in f.entries[:max_feed_posts] %}
             <tr>
             <td style="table-layout: fixed;
                     word-wrap: break-word;
@@ -48,7 +48,21 @@
             </td></tr>
             {% endfor %}
             
+            {% if new_entries_count(f) > max_feed_posts %}
+            <tr>
+            <td style="table-layout: fixed;
+                    word-wrap: break-word;
+                    width: 100%;
+                    padding: 10px;
+                    background: rgba(68, 18, 18, 0.08) none repeat scroll 0% 0%">
+                <a href="{{ get_feed_url(f) }}" style="color: rgb(140, 60, 60);">
+                {{ new_entries_count(f) - max_feed_posts  }} more new posts</a> 
+            </td>
+            </tr>
+            {% endif %}
+            
         {% endfor %}
+        
     </table> 
     
     {% if empty_feeds %}

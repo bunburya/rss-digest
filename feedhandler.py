@@ -1,18 +1,8 @@
 #  feedhandler.py
 
 # TODO:
-# - sort out config.
-#   - each "profile" has 3 elements:
-#     - profile-specific config file (ini, things like name, options
-#       to override defaults (eg, template files), etc)
-#     - feed list (txt, one url per line, eventually move to OPML)
-#     - state file (json, last updated, etc)
-#   - general config includes ini file and template files
-#     - goes in .config/rss-digest
-#   - profile-specific conf dir will be .config/rss-digest/profiles/{profile}/
-# - handle non-firstrun html (relying on state file)
-# - do email.py
-# - use jinja2 for template
+# - i think the next thing is just to create an interface that allows
+#   us to add blogs, remove them, etc 
 
 from datetime import datetime
 from time import struct_time, strftime, gmtime
@@ -25,28 +15,6 @@ import feedparser
 class HTTPError(BaseException): pass
 
 class FeedParseError(BaseException): pass
-
-class FeedURLList:
-    
-    def __init__(self, config):
-        self.config = config
-    
-    def add_url(self, url):
-        url = url.rstrip('/')
-        if url in self.config.feedlist:
-            return
-        self.config.feedlist.append(url)
-        self.config.feeddata.append({})
-    
-    def remove_url(self, url):
-        url = url.rstrip('/')
-        try:
-            i = self.config.feedlist.index(url)
-        except ValueError:
-            return
-        self.config.feedlist.pop(i)
-        self.config.feeddata.pop(i)
-        
 
 class FeedObjectList:
     
@@ -74,6 +42,10 @@ class FeedObjectList:
         fail = False
         try:
             feed = feedparser.parse(url, **kwargs)
+            #print(feed.link)
+            print(feed['feed']['link'])
+            #if not feed.link:
+            #    feed.link = url
         except BaseException as e:
             fail = True
             self.failures[url] = e
@@ -120,7 +92,7 @@ class FeedObjectList:
         # TODO: Currently we rely on feedlist and feeddata being the 
         # same length and in the same order.  This won't work if the
         # list of feeds is changed.  We need to either do this more
-        # flexible so that it doesn't rely on strict alignment, or else
+        # flexibly so that it doesn't rely on strict alignment, or else
         # control access to feedlist such that requisite changes are
         # always made to feeddata.  This may be easiest.
         self.failures = {}
@@ -222,3 +194,6 @@ class FeedObjectList:
             return strftime(fmt, date_struct)
         else:
             return date_struct
+
+    def get_feed_url(self, feed):
+        return feed.feed['link'] or feed.feed['links'][0].href

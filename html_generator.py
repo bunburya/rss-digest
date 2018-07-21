@@ -47,6 +47,7 @@ class HTMLGenerator:
         return self.get_template('entry')
 
     def generate_html(self, feedlist):
+        #NOTE:  feedlist here is a FeedObjectList, not a FeedList
         
         gen_date = datetime.now().strftime(self.config.date_format)
         gen_time = datetime.now().strftime(self.config.time_format)
@@ -76,12 +77,14 @@ class HTMLGenerator:
             'get_author': feedlist.get_author,
             'get_date': lambda e: feedlist.get_date(e,
                 self.config.datetime_format),
+            'get_feed_url': feedlist.get_feed_url,
             'last_update': last_update,
             'empty_feeds': empty_feeds,
             'non_empty_feeds': feedlist.non_empty_feeds,
             'empty_feed_titles': empty_feed_titles,
             'failures': feedlist.failures,
-            'len': len
+            'len': len,
+            'max_feed_posts': self.config.max_feed_posts
             #finish
             }
             
