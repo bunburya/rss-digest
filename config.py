@@ -17,9 +17,12 @@ class Config:
     def __init__(self, profile):
         self.profile = profile
         self.conf_dir = self.profile.conf_dir
-        self.config = self.load_config()
+        if profile.is_new:
+            self.config = self.load_config()
+        else:
+            self.config = self.get_config()
     
-    def get_conf_parser(self):
+    def get_config(self):
         """Create a ConfigParser instance and provide it with default
         (required) values."""
         
@@ -30,14 +33,15 @@ class Config:
                 'dir_path': self.profile.profile_dir,
                 'date_format': '%A %d %B %Y',
                 'time_format': '%H:%M',
-                'datetime_format': '${date_format} at ${time_format}'
+                'datetime_format': '${date_format} at ${time_format}',
+                'categorise': False
             }})
         return conf_parser
         
     def load_config(self, conf_file=None):
         if (conf_file is None) or (not conf_file):
             conf_file = join(self.profile.profile_dir, 'rss-digest.ini')
-        conf_parser = self.get_conf_parser()
+        config = self.get_config()
         try:
             with open(conf_file, 'r') as f:
                 self.conf_parser.read_file(f)
@@ -45,7 +49,7 @@ class Config:
             # if there is no config file, that's okay, because we've
             # already loaded sane defaults for all required options
             pass
-        return conf_parser
+        return config
     
     def save_config(self, conf_file=None):
         if (conf_file is None) or (not conf_file):
@@ -59,13 +63,15 @@ class Config:
 
 class Profile:
     
-    def __init__(self, name, app):
+    def __init__(self, name, app, is_new=False):
         self.name = name
         self.app = app
+        self.is_new = is_new
         self.conf_dir = self.app.conf_dir
         self.profile_dir = self.get_profile_dir()
         self.config = Config(self)
-        self.load_list()
+        if not is_new:
+            self.load_list()
     
     def get_profile_dir(self):
         # Get the directory which contains data specific to this profile
@@ -189,3 +195,13 @@ class Profile:
 
     def get_conf(self, key):
         return self.config.get(key)
+
+    def add_feed(self, title, url, posn=-1, save=True, *args, **kwargs):
+        self.load_list()
+        self.load_data()
+        self.feedlist.insert_feed(posn, title, url, *args, **kwargs)
+        self.feeddata.insert(posn, {})
+        if save:
+            self.save_data()
+            self.save_list()
+            
