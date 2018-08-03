@@ -17,7 +17,7 @@ class FeedURLList:
         #     - title
         #     - date created
         #   - body
-        #     - outline (title, type, xmlUrl)
+        #     - outline (title, type, xmlUrl, category)
         
         self.feeds = []
         et = parse(fpath)
@@ -29,12 +29,17 @@ class FeedURLList:
         for outline in body:
             attr = outline.attrib
             f = {k: attr[k] for k in attr}
+            _type = f.pop('type')
+            xmlUrl = f.pop('xmlUrl')
+            category = f.pop('category', None)
             # In at least one OPML file, I've seen a title attribute where
             # a text attribute should be, so if there's no title attribute,
             # we copy the text attribute over
-            if 'text' not in f and 'title' in f:
-                f['text'] = f['title']
-            self.feeds.append(f)
+            if 'text' in f:
+                text = f.pop('text')
+            elif 'title' in f:
+                text = f['title']
+            self.append_feed(_type, text, xmlUrl, **f)
             
     def to_opml(self, fpath=None):
         opml = Element('opml')
@@ -66,7 +71,8 @@ class FeedURLList:
         self.feeds.insert(i, f)
     
     def append_feed(self, *args, **kwargs):
-        """Append a new feed to the end of the list."""
+        """Append a new feed to the end of the list.  Takes all the same
+        args as insert_feed, except the first one (index)."""
         self.insert_feed(-1, *args, **kwargs)
     
     def remove_feed(self, i=None, title=None, url=None):

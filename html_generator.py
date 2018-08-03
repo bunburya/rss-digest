@@ -84,7 +84,8 @@ class HTMLGenerator:
             'empty_feed_titles': empty_feed_titles,
             'failures': feedlist.failures,
             'len': len,
-            'max_feed_posts': self.profile.get_conf('max_feed_posts')
+            'max_feed_posts': self.profile.get_conf('max_feed_posts'),
+            'categorised': self.profile.get_conf('categorised', 'bool')
             #finish
             }
             

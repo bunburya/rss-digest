@@ -45,12 +45,12 @@ class RSSDigest:
         profile = Profile(name, self, is_new=True)
 
 class CLInterface:
-    """A very simply CLI for adding profiles and feeds."""
+    """A very simple CLI for adding profiles and feeds."""
     
     def __init__(self, app):
         self.app = app
         
-    def add_profile(self, profile=None):
+    def add_feed(self, profile=None):
         if profile is None:
             profile = input('Which profile?').strip()
             if profile not in self.app.get_profiles():

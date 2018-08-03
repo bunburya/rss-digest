@@ -34,7 +34,7 @@ class Config:
                 'date_format': '%A %d %B %Y',
                 'time_format': '%H:%M',
                 'datetime_format': '${date_format} at ${time_format}',
-                'categorise': False
+                'categorised': False
             }})
         return conf_parser
         
@@ -57,8 +57,11 @@ class Config:
         with open(self.conf_file, 'w') as f:
             self.config.write(f)
     
-    def get(self, key):
-        return self.config.get('profile', key, fallback=None)
+    def get(self, key, val_type=None):
+        if val_type == 'bool':
+            return self.config.getboolean('profile', key, fallback=None)
+        else:
+            return self.config.get('profile', key, fallback=None)
     
 
 class Profile:
@@ -193,8 +196,8 @@ class Profile:
             state['last_updated'] = {}
         state['last_updated'][url] = last_updated
 
-    def get_conf(self, key):
-        return self.config.get(key)
+    def get_conf(self, key, val_type=None):
+        return self.config.get(key, val_type)
 
     def add_feed(self, title, url, posn=-1, save=True, *args, **kwargs):
         self.load_list()
