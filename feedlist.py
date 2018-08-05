@@ -6,6 +6,7 @@ from xml.etree.ElementTree import ElementTree, SubElement, Element, parse, tostr
 class FeedURLList:
     
     def __init__(self, fpath=None):
+        self.categories = {}
         if fpath:
             self.from_opml_file(fpath)
         
@@ -65,10 +66,15 @@ class FeedURLList:
         f['type'] = _type
         f['text'] = text
         f['xmlUrl'] = xmlUrl
-        f['category'] = f.get('category')
+        cat = f.get('category')
+        f['category'] = cat
         if not 'title' in f:
             f['title'] = text
         self.feeds.insert(i, f)
+        if cat in self.categories:
+            self.categories[cat].append(f)
+        else:
+            self.categories[cat] = [f]
     
     def append_feed(self, *args, **kwargs):
         """Append a new feed to the end of the list.  Takes all the same
@@ -77,8 +83,9 @@ class FeedURLList:
     
     def remove_feed(self, i=None, title=None, url=None):
         """Remove a feed, specified by index, title OR url."""
+        removed = None
         if i is not None:
-            return self.feeds.pop(i)
+            removed = self.feeds.pop(i)
         else:
             if title is not None:
                 attr = 'text'
@@ -87,8 +94,17 @@ class FeedURLList:
                 attr = 'xmlUrl'
                 match = url
             for i, f in enumerate(self.feeds):
-                if self.feeds[i][attr] == match:
-                    return self.feeds.pop(i)
+                if f[attr] == match:
+                    removed = self.feeds.pop(i)
+                    break
+        if removed is not None:
+            cat = removed['category']
+            if removed in self.categories[cat]:
+                self.categories[cat].remove(removed)
+    
+    def get_categories(self):
+        for c in self.categories:
+            yield c
     
     def __iter__(self):
         self._i = -1
