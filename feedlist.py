@@ -8,7 +8,10 @@ class FeedURLList:
     def __init__(self, fpath=None):
         self.categories = {}
         if fpath:
-            self.from_opml_file(fpath)
+            try:
+                self.from_opml_file(fpath)
+            except FileNotFoundError:
+                self.create_opml_file(fpath)
         
     def from_opml_file(self, fpath):
         
@@ -25,7 +28,10 @@ class FeedURLList:
         opml = et.getroot()
         self.version = opml.get('version')
         head = opml.find('head')
-        self.title = head.find('title').text
+        try:
+            self.title = head.find('title').text
+        except AttributeError:
+            pass
         body = opml.find('body')
         for outline in body:
             attr = outline.attrib
@@ -46,10 +52,14 @@ class FeedURLList:
         opml = Element('opml')
         opml.set('version', self.version)
         head = SubElement(opml, 'head')
-        
-        title = SubElement(head, 'title')
-        title.text = self.title
+        try:
+            if self.title:
+                title = SubElement(head, 'title')
+                title.text = self.title
+        except AttributeError:
+            pass
         body = SubElement(opml, 'body')
+        print(self.feeds)
         for f in self.feeds:
             f_elem = SubElement(body, 'outline')
             for k in f:
@@ -60,6 +70,16 @@ class FeedURLList:
             tree = ElementTree(opml)
             tree.write(fpath, encoding='utf-8', xml_declaration=True)
     
+    def create_opml_file(self, fpath=None, name=None):
+        # TODO: move template to another file
+        self.feeds = []
+        self.version = '2.0'
+        if name:
+            self.title = 'RSSDigest feed list for profile {}'.format(name)
+        else:
+            self.title = None
+        self.to_opml(fpath)
+    
     def insert_feed(self, i, _type, text, xmlUrl, **other):
         """Insert a new feed at index i."""
         f = other
@@ -67,7 +87,6 @@ class FeedURLList:
         f['text'] = text
         f['xmlUrl'] = xmlUrl
         cat = f.get('category')
-        f['category'] = cat
         if not 'title' in f:
             f['title'] = text
         self.feeds.insert(i, f)
@@ -112,4 +131,7 @@ class FeedURLList:
     
     def __next__(self):
         self._i += 1
-        return self.feeds[self._i]
+        try:
+            return self.feeds[self._i]
+        except IndexError:
+            raise StopIteration

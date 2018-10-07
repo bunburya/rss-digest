@@ -28,6 +28,7 @@ class Config:
         
         conf_parser = ConfigParser(interpolation=ExtendedInterpolation())
         conf_parser.read_dict(
+            # TODO:  Save this to another file, defaults.json or something
             {'profile': {
                 'user_name': self.profile.name,
                 'dir_path': self.profile.profile_dir,
@@ -86,12 +87,12 @@ class Profile:
             mkdir(profile_dir)
         return profile_dir
     
-    def _load_json(self, fpath):
+    def _load_json(self, fpath, empty_type=dict):
         try:
             with open(fpath) as f:
                 return load(f)
         except FileNotFoundError:
-            return {}
+            return empty_type()
     
     def _save_json(self, data, fpath):
         with open(fpath, 'w') as f:
@@ -137,7 +138,7 @@ class Profile:
         return join(self.profile_dir, 'data.json')
     
     def load_data(self):
-        self.feeddata = self._load_json(self.data_file)
+        self.feeddata = self._load_json(self.data_file, list)
 
     def save_data(self, data=None):
         if data is not None:
@@ -152,8 +153,7 @@ class Profile:
         self.feedlist = FeedURLList(self.list_file)
     
     def save_list(self):
-        with open(self.list_file, 'w') as f:
-            f.writelines('\n'.join(self.feedlist))
+        self.feedlist.to_opml(self.list_file)
 
     def get_last_updated(self, url=None):
         # If url is None, this returns the last update of the feedlist
@@ -202,7 +202,13 @@ class Profile:
     def add_feed(self, title, url, posn=-1, save=True, *args, **kwargs):
         self.load_list()
         self.load_data()
-        self.feedlist.insert_feed(posn, title, url, *args, **kwargs)
+        print(args)
+        print(kwargs)
+        print({k: v for k, v in kwargs.items() if v is not None})
+        self.feedlist.insert_feed(posn, title, 'rss', url,
+            # Can't serialise None, so remove None args
+            *filter(lambda a: a is not None, args),
+            **{k: v for k, v in kwargs.items() if v is not None})
         self.feeddata.insert(posn, {})
         if save:
             self.save_data()
