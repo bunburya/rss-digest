@@ -12,40 +12,68 @@ from configparser import ConfigParser, ExtendedInterpolation
 
 from feedlist import FeedURLList
 
+# Few helper functions
+
+def load_json(fpath, empty_type=dict):
+    try:
+        with open(fpath) as f:
+            return load(f)
+    except FileNotFoundError:
+        return empty_type()
+    
+def save_json(data, fpath):
+    with open(fpath, 'w') as f:
+        dump(data, f)
+
 class Config:
     
     def __init__(self, profile):
+        # TODO:  Having Profile init Config doesn't seem great from the
+        # perspective of storing app-wide configs in Config.  Maybe
+        # revert this order of initialisation or store those configs
+        # elsewhere.
         self.profile = profile
         self.conf_dir = self.profile.conf_dir
         if profile.is_new:
-            self.config = self.load_config()
-        else:
             self.config = self.get_config()
+            self.config['profile']['email'] = self.profile.email
+        else:
+            self.config = self.load_config()
     
     def get_config(self):
         """Create a ConfigParser instance and provide it with default
-        (required) values."""
+        (required) values.
+        
+        NOTE:  We specify `email` as none.  For normal usage, this will
+        need to be overwritten with an email address.  We could, however,
+        allow for some fallback action when no email address is present,
+        such as outputting the HTML content to stdout."""
         
         conf_parser = ConfigParser(interpolation=ExtendedInterpolation())
+        print(self.profile.name)
+        print(self.profile.email)
+        print(self.profile.profile_dir)
+
         conf_parser.read_dict(
             # TODO:  Save this to another file, defaults.json or something
             {'profile': {
                 'user_name': self.profile.name,
+                'email': '',
                 'dir_path': self.profile.profile_dir,
                 'date_format': '%A %d %B %Y',
                 'time_format': '%H:%M',
                 'datetime_format': '${date_format} at ${time_format}',
-                'categorised': False
+                'categorised': 'false'
             }})
         return conf_parser
-        
+    
     def load_config(self, conf_file=None):
         if (conf_file is None) or (not conf_file):
             conf_file = join(self.profile.profile_dir, 'rss-digest.ini')
         config = self.get_config()
         try:
             with open(conf_file, 'r') as f:
-                self.conf_parser.read_file(f)
+                config.read_file(f)
         except FileNotFoundError:
             # if there is no config file, that's okay, because we've
             # already loaded sane defaults for all required options
@@ -55,7 +83,7 @@ class Config:
     def save_config(self, conf_file=None):
         if (conf_file is None) or (not conf_file):
             conf_file = join(self.profile.profile_dir, 'rss-digest.ini')
-        with open(self.conf_file, 'w') as f:
+        with open(conf_file, 'w') as f:
             self.config.write(f)
     
     def get(self, key, val_type=None):
@@ -64,17 +92,36 @@ class Config:
         else:
             return self.config.get('profile', key, fallback=None)
     
+    # email_data is data required to *send* the email to the user
+    # (as distinct from the recipient email address, which will be
+    # specified in the relevant profile config ini file).
+    
+    @property
+    def email_file(self):
+        return join(self.conf_dir, 'email.json')
+    
+    def load_email_data(self):
+        self.email_data = load_json(self.email_file)
+    
+    def save_email_data(self, data):
+        self.email_data = data
+        save_json(data, self.email_file)
 
 class Profile:
     
-    def __init__(self, name, app, is_new=False):
-        self.name = name
+    def __init__(self, app, name, email=None, is_new=False):
         self.app = app
+        self.name = name
+        self.email = email
         self.is_new = is_new
         self.conf_dir = self.app.conf_dir
         self.profile_dir = self.get_profile_dir()
         self.config = Config(self)
-        if not is_new:
+        if is_new:
+            if not email:
+                raise TypeError("When setting up a new profile, email is required.")
+            self.config.save_config()
+        else:
             self.load_list()
     
     def get_profile_dir(self):
@@ -87,30 +134,6 @@ class Profile:
             mkdir(profile_dir)
         return profile_dir
     
-    def _load_json(self, fpath, empty_type=dict):
-        try:
-            with open(fpath) as f:
-                return load(f)
-        except FileNotFoundError:
-            return empty_type()
-    
-    def _save_json(self, data, fpath):
-        with open(fpath, 'w') as f:
-            dump(data, f)
-    
-    # email_data is data required to send the email to the user
-    
-    @property
-    def email_file(self):
-        return join(self.profile_dir, 'email.json')
-    
-    def load_email_data(self):
-        self.email_data = self._load_json(self.email_file)
-    
-    def save_email_data(self, data):
-        self.email_data = data
-        self._save_json(data, self.email_file)
-    
     # state is data related to the working of the rss-digest programme
     # itself (as opposed to data relating to feeds, etc)
     
@@ -119,7 +142,7 @@ class Profile:
         return join(self.profile_dir, 'state.json')
 
     def load_state(self):
-        self.state = self._load_json(self.state_file)
+        self.state = load_json(self.state_file)
         self.new_state = {}
         # If there is no state, assume this is the first run.
         self.first_run = not self.state
@@ -128,7 +151,7 @@ class Profile:
         if self.new_state:
             self.state = self.new_state
             self.new_state = {}
-        self._save_json(self.state, self.state_file)
+        save_json(self.state, self.state_file)
     
     # feeddata is data (entries, etc) relating to feeds that have
     # already been downloaded
@@ -138,12 +161,12 @@ class Profile:
         return join(self.profile_dir, 'data.json')
     
     def load_data(self):
-        self.feeddata = self._load_json(self.data_file, list)
+        self.feeddata = load_json(self.data_file, list)
 
     def save_data(self, data=None):
         if data is not None:
             self.feeddata = data
-        self._save_json(self.feeddata, self.data_file)
+        save_json(self.feeddata, self.data_file)
     
     @property
     def list_file(self):
@@ -202,9 +225,6 @@ class Profile:
     def add_feed(self, title, url, posn=-1, save=True, *args, **kwargs):
         self.load_list()
         self.load_data()
-        print(args)
-        print(kwargs)
-        print({k: v for k, v in kwargs.items() if v is not None})
         self.feedlist.insert_feed(posn, title, 'rss', url,
             # Can't serialise None, so remove None args
             *filter(lambda a: a is not None, args),
@@ -213,4 +233,3 @@ class Profile:
         if save:
             self.save_data()
             self.save_list()
-            

@@ -45,13 +45,12 @@ class RSSDigest:
     
     def get_profile(self, name):
         if name in self.get_profiles():
-            return Profile(name, self)
+            return Profile(self, name)
         else:
             raise ValueError('No profile {}.'.format(name))
     
-    def new_profile(self, name):
-        profile = Profile(name, self, is_new=True)
-        # TODO:  Also need email, password (hidden), maybe others?
+    def new_profile(self, name, email):
+        profile = Profile(self, name, email, is_new=True)
         return profile
 
 class CLInterface:
@@ -80,8 +79,15 @@ class CLInterface:
             p.save_list()
 
     def add_profile(self):
-        name = input('Enter profile name: ')
-        profile = self.app.new_profile(name)
+        name = email = None
+        while not (name and email):
+            name = input('Enter profile name: ')
+            email = input('Enter email address: ')
+            print('EMAILL:', email)
+            if not (name and email):
+                print('You need to enter both a name and an email.')
+        profile = self.app.new_profile(name, email)
+        print('Profile {} added.  Now add some feeds.'.format(name))
         self.add_feed(profile.name)
     
     def eval_cmd(self):
@@ -89,7 +95,11 @@ class CLInterface:
         print('add_profile:  Add a new profile.')
         print('add_feed:  Add a feed to a profile.')
         print('exit:  Exit the app.')
-        cmd = input('Enter command: ').lower().split()[0]
+        try:
+            cmd = input('Enter command: ').lower().split()[0]
+        except IndexError:
+            # empty input; do nothing
+            return
         if cmd == 'add_profile':
             self.add_profile()
         elif cmd == 'add_feed':

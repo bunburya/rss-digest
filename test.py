@@ -19,7 +19,7 @@ def test_run1():
 
 def test_run2():
     
-    c = config.Profile('test', app)
+    c = config.Profile(app, 'test')
     f = feedhandler.FeedObjectList(c)
     f.load()
     f.update_feeds()
@@ -29,7 +29,7 @@ def test_run2():
     return html
 
 def test_add(name, url):
-    c = config.Profile('test', app)
+    c = config.Profile(app, 'test')
     c.load_data()
     c.load_list()
     f = feedhandler.FeedURLList(c)
@@ -39,7 +39,7 @@ def test_add(name, url):
     return c.feedlist
 
 def test_remove(name, url):
-    c = config.Profile('test', app)
+    c = config.Profile(app, 'test')
     c.load_data()
     c.load_list()
     f = feedhandler.FeedURLList(c)
@@ -48,9 +48,9 @@ def test_remove(name, url):
     c.save_list()
     return c.feedlist
 
-def test_email():
+def test_email(profile):
     
-    c = config.Profile('test', app)
+    c = config.Profile(app, profile)
     f = feedhandler.FeedObjectList(c)
     f.load()
     f.update_feeds()
@@ -73,4 +73,5 @@ if __name__ == '__main__':
         url = argv[3]
         print(test_remove(name, url))
     elif cmd == 'email':
-        test_email()
+        profile = argv[2]
+        test_email(profile)
