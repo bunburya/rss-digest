@@ -83,7 +83,7 @@ class CLInterface:
         while not (name and email):
             name = input('Enter profile name: ')
             email = input('Enter email address: ')
-            print('EMAILL:', email)
+            print('EMAIL:', email)
             if not (name and email):
                 print('You need to enter both a name and an email.')
         profile = self.app.new_profile(name, email)
