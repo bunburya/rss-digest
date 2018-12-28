@@ -58,6 +58,8 @@ def test_email(profile):
     html = h.generate_html(f)
     e = email_handler.EmailHandler(c)
     e.send_email(html)
+    f.update_profile()
+    f.save()
 
 if __name__ == '__main__':
     from sys import argv

@@ -10,10 +10,14 @@
 # - Interface for creating profiles, editing feeds etc.
 # - Categories
 
+import logging
 from os import mkdir, listdir
 from os.path import exists, expanduser, join
+from getpass import getpass
 
-from config import Profile
+from config import GlobalConfig, Profile
+
+logging.basicConfig(level=logging.INFO)
 
 class RSSDigest:
     """This is the main class, that will be invoked from the command
@@ -21,21 +25,11 @@ class RSSDigest:
     arguments to specify exactly what action is needed.""" 
     
     def __init__(self):
-        self.conf_dir = self.get_conf_dir()
+        self.config = GlobalConfig(self)
         self.profiles_dir = self.get_profiles_dir()
     
-    def get_conf_dir(self):
-        # Get the root config directory in which all the config files
-        # are found.  Eventually use XDG to do this properly.
-        # Also move this to some global function so it's not set up
-        # per profile.
-        conf_dir = expanduser('~/.config/rss-digest')
-        if not exists(conf_dir):
-            mkdir(conf_dir)
-        return conf_dir
-    
     def get_profiles_dir(self):
-        profiles_dir = join(self.conf_dir, 'profiles')
+        profiles_dir = join(self.config.conf_dir, 'profiles')
         if not exists(profiles_dir):
             mkdir(profiles_dir)
         return profiles_dir
@@ -58,6 +52,40 @@ class CLInterface:
     
     def __init__(self, app):
         self.app = app
+        if not exists(self.app.config.email_data_file):
+            print('No email.json file found.  Add details of how RSS Digest is to send emails.')
+            self.set_email_data()
+        self.repl()
+       
+    def force_input(self, prompt=None, msg=None, cmd=input):
+        response = False
+        while not response:
+            response = cmd(prompt)
+            if (not response) and msg:
+                print(msg)
+        return response
+       
+    def set_email_data(self):
+        data = {}
+        author = input('Who should emails from RSS Digest appear as coming from '
+                        '(default is "RSSDigest")? ') or 'RSSDigest'
+        email = self.force_input('Email address from which emails are sent:',
+                            'An email address is required. ')
+        smtp_server = self.force_input('SMTP server: ',
+                            'An SMTP server is required.')
+        smtp_port = input('SMTP port (default is 587): ') or 587
+        username = input('Email username (default is the email address): ') or email
+        password = self.force_input('Email password (this is stored as plaintext): ',
+                                'Your password is required.', getpass)
+        data = {
+            'author': author,
+            'email': email,
+            'smtp_server': smtp_server,
+            'smtp_port': smtp_port,
+            'username': username,
+            'password': password
+            }
+        self.app.config.save_email_data(data)
         
     def add_feed(self, profile=None):
         if profile is None:
@@ -116,4 +144,3 @@ class CLInterface:
 if __name__ == '__main__':
     app = RSSDigest()
     cli = CLInterface(app)
-    cli.repl()

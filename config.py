@@ -25,13 +25,53 @@ def save_json(data, fpath):
     with open(fpath, 'w') as f:
         dump(data, f)
 
-class Config:
+class GlobalConfig:
+    
+    """A class to control and store global configuration settings."""
+    
+    def __init__(self, app):
+        pass
+
+    @property
+    def conf_dir(self):
+        # Get the root config directory in which all the config files
+        # are found.  Eventually use XDG to do this properly.
+        # Also move this to some global function so it's not set up
+        # per profile.
+        _conf_dir = expanduser('~/.config/rss-digest')
+        if not exists(_conf_dir):
+            mkdir(_conf_dir)
+        return _conf_dir
+    
+    @property
+    def template_dir(self):
+        _template_dir = join(self.conf_dir, 'templates')
+        if not exists(_template_dir):
+            mkdir(_template_dir)
+            # TODO: Include code to copy in default template
+        return _template_dir
+    
+    # email_data is data required to *send* the email to the user
+    # (as distinct from the recipient email address, which will be
+    # specified in the relevant profile config ini file).
+    
+    @property
+    def email_data_file(self):
+        return join(self.conf_dir, 'email.json')
+    
+    def load_email_data(self):
+        self.email_data = load_json(self.email_data_file)
+    
+    def save_email_data(self, data):
+        self.email_data = data
+        save_json(data, self.email_data_file)
+
+class UserConfig:
+
+    """A class to control and store user-specific configuration settings."""
+    # TODO:  Create a separate global configuration class.
     
     def __init__(self, profile):
-        # TODO:  Having Profile init Config doesn't seem great from the
-        # perspective of storing app-wide configs in Config.  Maybe
-        # revert this order of initialisation or store those configs
-        # elsewhere.
         self.profile = profile
         self.conf_dir = self.profile.conf_dir
         if profile.is_new:
@@ -44,10 +84,11 @@ class Config:
         """Create a ConfigParser instance and provide it with default
         (required) values.
         
-        NOTE:  We specify `email` as none.  For normal usage, this will
-        need to be overwritten with an email address.  We could, however,
-        allow for some fallback action when no email address is present,
-        such as outputting the HTML content to stdout."""
+        NOTE:  We specify `email` as none (empty string).  For normal
+        usage, this will need to be overwritten with an email address.
+        We could, however, allow for some fallback action when no email
+        address is present, such as outputting the HTML content to
+        stdout."""
         
         conf_parser = ConfigParser(interpolation=ExtendedInterpolation())
         print(self.profile.name)
@@ -63,7 +104,8 @@ class Config:
                 'date_format': '%A %d %B %Y',
                 'time_format': '%H:%M',
                 'datetime_format': '${date_format} at ${time_format}',
-                'categorised': 'false'
+                'categorised': 'false',
+                'template': 'email.html'
             }})
         return conf_parser
     
@@ -91,21 +133,6 @@ class Config:
             return self.config.getboolean('profile', key, fallback=None)
         else:
             return self.config.get('profile', key, fallback=None)
-    
-    # email_data is data required to *send* the email to the user
-    # (as distinct from the recipient email address, which will be
-    # specified in the relevant profile config ini file).
-    
-    @property
-    def email_file(self):
-        return join(self.conf_dir, 'email.json')
-    
-    def load_email_data(self):
-        self.email_data = load_json(self.email_file)
-    
-    def save_email_data(self, data):
-        self.email_data = data
-        save_json(data, self.email_file)
 
 class Profile:
     
@@ -114,9 +141,8 @@ class Profile:
         self.name = name
         self.email = email
         self.is_new = is_new
-        self.conf_dir = self.app.conf_dir
-        self.profile_dir = self.get_profile_dir()
-        self.config = Config(self)
+        self.conf_dir = self.app.config.conf_dir
+        self.config = UserConfig(self)
         if is_new:
             if not email:
                 raise TypeError("When setting up a new profile, email is required.")
@@ -124,15 +150,26 @@ class Profile:
         else:
             self.load_list()
     
-    def get_profile_dir(self):
-        # Get the directory which contains data specific to this profile
+    @property
+    def profile_dir(self):
+        """Get the directory which contains data specific to this profile.
+        If that directory doesn't exist, create it."""
         base_profile_dir = join(self.conf_dir, 'profiles')
         if not exists(base_profile_dir):
             mkdir(base_profile_dir)
-        profile_dir = join(base_profile_dir, self.name)
-        if not exists(profile_dir):
-            mkdir(profile_dir)
-        return profile_dir
+        _profile_dir = join(base_profile_dir, self.name)
+        if not exists(_profile_dir):
+            mkdir(_profile_dir)
+        return _profile_dir
+    
+    @property
+    def template_dir(self):
+        """Get the director which contains templates specific to this
+        profile.  If that directory doesn't exist, create it."""
+        _template_dir = join(self.profile_dir, 'templates')
+        if not exists(_template_dir):
+            mkdir(_template_dir)
+        return _template_dir
     
     # state is data related to the working of the rss-digest programme
     # itself (as opposed to data relating to feeds, etc)
@@ -189,7 +226,7 @@ class Profile:
         #print(self.state)
         
         updated_dict = self.state.get('last_updated', {})
-        if url is None and None not in updated_dict:
+        if (url is None) and (None not in updated_dict):
             # If we haven't set a specific value for the feedlist as a
             # whole, just return the most recent URL-specific value
             try:
@@ -204,7 +241,7 @@ class Profile:
         else:
             return struct_time(result)
     
-    def set_last_updated(self, last_updated, new=True, url=None):
+    def set_last_updated(self, last_updated, url=None, new=True):
         # if new == True, we save to self.new_state instead of
         # self.state.  new_state is then copied to state when saving.
         # This is to allow us to access the old last_updated value when

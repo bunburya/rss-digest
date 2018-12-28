@@ -71,8 +71,8 @@ class FeedObjectList:
     def update_profile(self):
         update_time = datetime.now().timetuple()
         self.profile.set_last_updated(update_time)
-        for url in self.feed_urls:
-            self.profile.set_last_updated(update_time, url)
+        for f in self.profile.feedlist:
+            self.profile.set_last_updated(update_time, f['xmlUrl'])
         # finish
     
     def load_feeds(self):
