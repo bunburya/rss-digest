@@ -11,6 +11,7 @@ from collections import OrderedDict
 from configparser import ConfigParser, ExtendedInterpolation
 
 from feedlist import FeedURLList
+from feedhandler import FeedObjectList
 
 # Few helper functions
 
@@ -149,6 +150,7 @@ class Profile:
             self.config.save_config()
         else:
             self.load_list()
+    self.feed_handler = FeedHandler(self)
     
     @property
     def profile_dir(self):

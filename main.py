@@ -4,7 +4,6 @@
 # TODO:
 
 # - Develop main.py.  Main functionality:
-#   - new profile
 #   - add / remove feed from profile
 #   - run for profile (with / without email)
 # - Interface for creating profiles, editing feeds etc.
@@ -13,9 +12,12 @@
 import logging
 from os import mkdir, listdir
 from os.path import exists, expanduser, join
+from shutil import rmtree
 from getpass import getpass
 
 from config import GlobalConfig, Profile
+from html_generator import HTMLGenerator
+from email_handler import EmailHandler
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,19 +28,22 @@ class RSSDigest:
     
     def __init__(self):
         self.config = GlobalConfig(self)
-        self.profiles_dir = self.get_profiles_dir()
+        self.html_generator = HTMLGenerator(self)
+        self.email_handler = EmailHandler(self)
     
-    def get_profiles_dir(self):
+    @property
+    def profiles_dir(self):
         profiles_dir = join(self.config.conf_dir, 'profiles')
         if not exists(profiles_dir):
             mkdir(profiles_dir)
         return profiles_dir
 
-    def get_profiles(self):
+    @property
+    def profiles(self):
         return listdir(self.profiles_dir)
     
     def get_profile(self, name):
-        if name in self.get_profiles():
+        if name in self.profiles:
             return Profile(self, name)
         else:
             raise ValueError('No profile {}.'.format(name))
@@ -46,12 +51,30 @@ class RSSDigest:
     def new_profile(self, name, email):
         profile = Profile(self, name, email, is_new=True)
         return profile
+       
+    def del_profile(self, name):
+        rmtree(join(self.profiles_dir, name), ignore_errors=True)
+    
+    def email_profile(self, profile):
+        """Sends an RSS Digest email for the given profile."""
+        # Running order:
+        # - load existing data from file
+        # - fetch new feeds
+        # - filter new feeds using old feeds
+        # - save filtered feeds to file
+        # - generate html from filtered feeds
+        # - send email
+        profile.feed_handler.update_feeds()
+        html = self.html_generator.generate_html(profile)
+        self.email_handler.send_email(profile, html)
+        
 
 class CLInterface:
     """A very simple CLI for adding profiles and feeds."""
     
     def __init__(self, app):
         self.app = app
+        print('Welcome to RSS Digest.')
         if not exists(self.app.config.email_data_file):
             print('No email.json file found.  Add details of how RSS Digest is to send emails.')
             self.set_email_data()
@@ -90,7 +113,7 @@ class CLInterface:
     def add_feed(self, profile=None):
         if profile is None:
             profile = input('Which profile? ').strip()
-            if profile not in self.app.get_profiles():
+            if profile not in self.app.profiles:
                 print('Invalid profile.  Enter existing profile name or create new profile.')
                 return
         p = self.app.get_profile(profile)
@@ -105,6 +128,15 @@ class CLInterface:
                 save_and_quit = True
             p.save_data()
             p.save_list()
+    
+    def remove_profile(self):
+        name = self.force_input('Enter name of profile to remove: ',
+                                'You need to enter a profile name.')
+        try:
+            self.app.del_profile(name)
+            print('Removed profile {}.'.format(name))
+        except FileNotFoundError:
+            print('No profile {} to delete.'.format(name))
 
     def add_profile(self):
         name = email = None
@@ -118,11 +150,14 @@ class CLInterface:
         print('Profile {} added.  Now add some feeds.'.format(name))
         self.add_feed(profile.name)
     
-    def eval_cmd(self):
+    def print_cmds(self):
         print('Commands (none of these take arguments; you will be prompted for input after entering the commands):')
         print('add_profile:  Add a new profile.')
         print('add_feed:  Add a feed to a profile.')
+        print('del_profile:  Delete a profile.')
         print('exit:  Exit the app.')
+        
+    def eval_cmd(self):        
         try:
             cmd = input('Enter command: ').lower().split()[0]
         except IndexError:
@@ -132,12 +167,15 @@ class CLInterface:
             self.add_profile()
         elif cmd == 'add_feed':
             self.add_feed()
+        elif cmd == 'del_profile':
+            self.remove_profile()
         elif cmd == 'exit':
             raise SystemExit
         else:
             print('Sorry, command {} not recognised.'.format(cmd))
     
     def repl(self):
+        self.print_cmds()
         while True:
             self.eval_cmd()
         

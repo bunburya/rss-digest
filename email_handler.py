@@ -8,13 +8,8 @@ from email.mime.text import MIMEText
 
 class EmailHandler:
     
-    def __init__(self, profile):
-        # NOTE:  By loading config in at init stage, we have to initiate
-        # a separate instance for each config.  Would it be more
-        # efficient to have one instance be able to handle multiple
-        # configs?  Does it matter?
-        self.profile = profile
-        self.config = profile.app.config
+    def __init__(self, app):
+        self.config = app.config
         self.config.load_email_data()
     
     def set_email_data(self, author_name, from_addr, smtp_serv,
@@ -29,13 +24,13 @@ class EmailHandler:
             }
         self.config.save_email_data(data)
     
-    def send_email(self, msg):
+    def send_email(self, profile, msg):
                 
         email_data = self.config.email_data
         
         # Create the message
         msg = MIMEText(msg, 'html')
-        to_addr = (self.profile.name, self.profile.get_conf('email'))
+        to_addr = (profile.name, profile.get_conf('email'))
         msg['To'] = email.utils.formataddr(to_addr)
         from_addr = (email_data['author'], email_data['email'])
         msg['From'] = email.utils.formataddr(from_addr)
@@ -55,7 +50,7 @@ class EmailHandler:
 
         try:
             server.sendmail(email_data['email'],
-                [self.profile.get_conf('email')], msg.as_string())
+                [profile.get_conf('email')], msg.as_string())
             logging.info('Email sent.')
         finally:
             

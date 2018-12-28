@@ -12,20 +12,17 @@ class HTTPError(BaseException): pass
 
 class FeedParseError(BaseException): pass
 
-class FeedObjectList:
+class FeedHandler:
     
     """This class represents a list of feed objects.  The individual
     feeds are objects returned by feedparser.parse.  It contains methods
     to load the feeds from file, load a list of URLs and fetch the
     feeds, update the feeds in the list, and save the list back to file.
-    """ 
     
-    # - load existing data from file
-    # - fetch new feeds
-    # - filter new feeds using old feeds
-    # - save filtered feeds to file
-    # - generate html from filtered feeds
-    # - send email
+    One instance of FeedHandler is instantiated per Profile, as this
+    class loads, manipulates and saves state and data that is specific
+    to a Profile.
+    """ 
         
     def __init__(self, profile):
         
@@ -33,6 +30,7 @@ class FeedObjectList:
         self.name = profile.name
         self.new_feeds = None
         self.failures = {}
+        self.load()
     
     def get_feed(self, url, **kwargs):
         fail = False
