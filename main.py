@@ -67,6 +67,11 @@ class RSSDigest:
         profile.feed_handler.update_feeds()
         html = self.html_generator.generate_html(profile)
         self.email_handler.send_email(profile, html)
+        profile.update_last_updated()
+        profile.feed_handler.save()
+    
+    def email_profile_name(self, name):
+        self.email_profile(self.get_profile(name))
         
 
 class CLInterface:
@@ -150,11 +155,28 @@ class CLInterface:
         print('Profile {} added.  Now add some feeds.'.format(name))
         self.add_feed(profile.name)
     
+    def email_profile(self):
+        name = self.force_input('Enter profile name: ',
+                                'You need to enter a profile name.')
+        try:
+            self.app.email_profile_name(name)
+            print('Email sent for profile {}.'.format(name))
+        except ValueError:
+            print('Profile {} not found.'.format(name))
+    
+    def test_email(self):
+        name = self.force_input('Enter profile name: ',
+                                'You need to enter a profile name.')
+        profile = self.app.get_profile(name)
+        self.app.email_handler.test_email(profile)
+    
     def print_cmds(self):
         print('Commands (none of these take arguments; you will be prompted for input after entering the commands):')
         print('add_profile:  Add a new profile.')
         print('add_feed:  Add a feed to a profile.')
         print('del_profile:  Delete a profile.')
+        print('email_profile:  Send an RSS digest email for a specific profile.')
+        print('test_email:  Send a test email to a specific profile.')
         print('exit:  Exit the app.')
         
     def eval_cmd(self):        
@@ -169,6 +191,10 @@ class CLInterface:
             self.add_feed()
         elif cmd == 'del_profile':
             self.remove_profile()
+        elif cmd == 'email_profile':
+            self.email_profile()
+        elif cmd == 'test_email':
+            self.test_email()
         elif cmd == 'exit':
             raise SystemExit
         else:

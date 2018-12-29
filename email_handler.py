@@ -34,7 +34,7 @@ class EmailHandler:
         msg['To'] = email.utils.formataddr(to_addr)
         from_addr = (email_data['author'], email_data['email'])
         msg['From'] = email.utils.formataddr(from_addr)
-        subj_str = '{}, your RSS digest email'.format(self.profile.name)
+        subj_str = '{}, your RSS digest email'.format(profile.name)
         msg['Subject'] = subj_str
         
         logging.info('Attempting to send email to %s.', to_addr)
@@ -55,15 +55,37 @@ class EmailHandler:
         finally:
             
             server.quit()
-                
-def main():
-    from sys import argv
-    if argv[1] == 'set':
-        from config import Config
-        c = Config(argv[2])
-        eh = EmailHandler(c)
-        eh.set_email_data(*argv[3:])
-        print('Email data set.')
+    
+    def test_email(self, profile):
+        email_data = self.config.email_data
+        
+        # Create the message
+        msg = MIMEText('This is a test email.', 'html')
+        to_addr = (profile.name, profile.get_conf('email'))
+        msg['To'] = email.utils.formataddr(to_addr)
+        from_addr = (email_data['author'], email_data['email'])
+        msg['From'] = email.utils.formataddr(from_addr)
+        subj_str = 'Test email'.format(profile.name)
+        msg['Subject'] = subj_str
+        
+        logging.info('Attempting to send test email to %s.', to_addr)
+        
+        # Connect
+        server = smtplib.SMTP(email_data['smtp_server'],
+                        email_data['smtp_port'])
+        server.ehlo()
+        server.starttls()
+        server.login(email_data['username'], email_data['password'])
+        
+        server.set_debuglevel(True) # show communication with the server
+
+        try:
+            server.sendmail(email_data['email'],
+                [profile.get_conf('email')], msg.as_string())
+            logging.info('Test email sent.')
+        finally:
+            
+            server.quit()
 
 if __name__ == '__main__':
     main()

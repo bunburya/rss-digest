@@ -9,8 +9,43 @@ from os.path import join, exists
 from time import strftime
 from datetime import datetime
 
-from jinja2 import Environment, FunctionLoader, select_autoescape
+from jinja2 import Environment, BaseLoader, select_autoescape, TemplateNotFound
 from jinja2.exceptions import TemplateNotFound
+
+class TemplateLoader(BaseLoader):
+    """A custom Jinja2 Loader class that first checks whether a specific
+    profile has defined a custom template and, if not, uses a default
+    template as a fallback."""
+    
+    def __init__(self, html_generator, fallback_template_dir,
+                    *args, **kwargs):
+        self.html_generator = html_generator
+        self.fallback_template_dir = fallback_template_dir
+        self.profile = None
+        BaseLoader.__init__(self, *args, **kwargs)
+    
+    def get_source(self, environment, name):
+        logging.info('Loading template "{}".'.format(name))
+        fpath = None
+        if self.profile:
+            user_fpath = join(self.profile.template_dir, name)
+            if exists(user_fpath):
+                fpath = user_fpath
+                logging.info('Loading user-specific template at %s.', fpath)
+        if fpath is None:
+            fpath = join(self.fallback_template_dir, name)
+            logging.info('No user-specific template found.  '
+                            'Using fallback at %s.', fpath)
+        try:
+            with open(fpath) as f:
+                # The last returned value should be a function that
+                # checks whether the template is up to date, or should
+                # be reloaded.  We always say it is up to date.
+                return f.read(), fpath, lambda: True
+        except FileNotFoundError:
+            logging.critical('Failed to load template at %s.', fpath)
+            raise TemplateNotFound(name)
+    
 
 class HTMLGenerator:
     
@@ -18,49 +53,11 @@ class HTMLGenerator:
         logging.info('Initialising HTMLGenerator.')
         self.app = app
         self.global_config = app.config
-        self.fallback_template_dir = self.global_config.template_dir
+        self.template_loader = TemplateLoader(self,
+                                self.global_config.template_dir)
         self.jinja_env = Environment(
-            loader=FunctionLoader(lambda n: self.get_template(profile, n)),
+            loader=self.template_loader,
             autoescape=select_autoescape(['html']))
-    
-    def get_template(self, profile, name):
-        """Return the template file in the user's template folder,
-        reverting to the standard one as a default.
-        This function is passed to the Jinja2 Environment Loader.
-        """
-        logging.info('Loading template "{}".'.format(name))
-        user_fpath = join(self.user_template_dir, name)
-        fallback_fpath = join(self.fallback_template_dir, name)
-        if exists(user_fpath):
-            fpath = user_fpath
-            logging.info('Loading user-specific template at %s.', fpath)
-        else:
-            fpath = fallback_fpath
-            logging.info('No user-specific template found.  '
-                            'Using fallback at %s.', fpath)
-        try:
-            with open(fpath) as f:
-                return f.read()
-        except FileNotFoundError:
-            logging.critical('Failed to load template at %s.', fpath)
-            return None
-
-    #NOTE: Not sure we need any of these getter functions
-    @property
-    def email_template_firstrun(self):
-        return self.get_template('email_firstrun')
-    
-    @property
-    def email_template(self):
-        return self.get_template('email')
-    
-    @property
-    def feed_template(self):
-        return self.get_template('feed')
-    
-    @property
-    def entry_template(self):
-        return self.get_template('entry')
 
     def generate_html(self, profile):
         """Generate HTML for email (or, conceivably, output in some other
@@ -73,10 +70,10 @@ class HTMLGenerator:
         
         feed_handler = profile.feed_handler
         
-        gen_date = datetime.now().strftime(self.profile.get_conf('date_format'))
-        gen_time = datetime.now().strftime(self.profile.get_conf('time_format'))
+        gen_date = datetime.now().strftime(profile.get_conf('date_format'))
+        gen_time = datetime.now().strftime(profile.get_conf('time_format'))
         
-        current_datetime = strftime(self.profile.get_conf('datetime_format'))
+        current_datetime = strftime(profile.get_conf('datetime_format'))
         last_update = profile.get_last_updated()
         logging.info('Current time %s.  Last update was at %s.', current_datetime, last_update)
         if last_update is not None:
@@ -117,6 +114,7 @@ class HTMLGenerator:
             }
            
         template_name = profile.get_conf('template')
+        self.template_loader.profile = profile
         template = self.jinja_env.get_template(template_name)
         email_html = template.render(**output_context_data)
         return email_html

@@ -4,6 +4,7 @@
 # config.py
 
 from json import dump, load
+from datetime import datetime
 from os import mkdir
 from os.path import exists, expanduser, join
 from time import struct_time
@@ -11,7 +12,10 @@ from collections import OrderedDict
 from configparser import ConfigParser, ExtendedInterpolation
 
 from feedlist import FeedURLList
-from feedhandler import FeedObjectList
+from feedhandler import FeedHandler
+
+class FeedNotFoundError(BaseException):
+    pass
 
 # Few helper functions
 
@@ -150,7 +154,7 @@ class Profile:
             self.config.save_config()
         else:
             self.load_list()
-    self.feed_handler = FeedHandler(self)
+        self.feed_handler = FeedHandler(self)
     
     @property
     def profile_dir(self):
@@ -172,6 +176,15 @@ class Profile:
         if not exists(_template_dir):
             mkdir(_template_dir)
         return _template_dir
+    
+    def update_last_updated(self, failures=None):
+        """Set last_updated (for each feed, and for the profile as a
+        whole), to the current time."""
+        update_time = datetime.now().timetuple()
+        self.set_last_updated(update_time)
+        for f in self.feedlist:
+            self.set_last_updated(update_time, f['xmlUrl'])
+        # finish (is there anything else that needs to be done)?
     
     # state is data related to the working of the rss-digest programme
     # itself (as opposed to data relating to feeds, etc)
@@ -200,7 +213,7 @@ class Profile:
         return join(self.profile_dir, 'data.json')
     
     def load_data(self):
-        self.feeddata = load_json(self.data_file, list)
+        self.feeddata = load_json(self.data_file)
 
     def save_data(self, data=None):
         if data is not None:
@@ -268,7 +281,7 @@ class Profile:
             # Can't serialise None, so remove None args
             *filter(lambda a: a is not None, args),
             **{k: v for k, v in kwargs.items() if v is not None})
-        self.feeddata.insert(posn, {})
+        self.feeddata[url] = {}
         if save:
             self.save_data()
             self.save_list()

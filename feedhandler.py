@@ -1,10 +1,10 @@
 #  feedhandler.py
 
-from datetime import datetime
+import logging
+import json
 from time import struct_time, strftime, gmtime
 from os.path import join
 from copy import deepcopy
-import json
 
 import feedparser
 
@@ -22,7 +22,12 @@ class FeedHandler:
     One instance of FeedHandler is instantiated per Profile, as this
     class loads, manipulates and saves state and data that is specific
     to a Profile.
-    """ 
+    """
+    
+    # NOTE:  Attributes "feeds" and "new_feeds" of an instance of this
+    # class are dicts mapping URLs to feed objects.  Related methods,
+    # such as non_empty_feeds, updated_feeds, etc, return a list of
+    # feed objects (in the same order as they appear in feedlist). 
         
     def __init__(self, profile):
         
@@ -33,6 +38,11 @@ class FeedHandler:
         self.load()
     
     def get_feed(self, url, **kwargs):
+        """Fetches a feed (using feedparser).  If successful, return the
+        feed.  Otherwise, add the url to a list of failures and return
+        None."""
+        
+        logging.info('Fetching feed from %s.', url)
         fail = False
         try:
             feed = feedparser.parse(url, **kwargs)
@@ -48,56 +58,68 @@ class FeedHandler:
             # Feed not well formed
             fail = True
             self.failures[url] = feed['bozo_exception']
+            logging.warning('Got feed not well formed error for %s.', url)
         elif feed['status'] >= 400 and feed['status'] <= 599:
             # HTTP error (TODO: split into temporary and permanent)
             fail = True
             self.failures[url] = HTTPError(feed['status'])
+            logging.warning('Got HTTP error for %s.', url)
         elif (feed['status'] == 304) or (not feed['entries']):
-            # Not modified or feed is empty.  Not really a fail, but
-            # we return nothing all the same.
+            # Not modified or feed is empty.  Not really a fail (so
+            # don't add to self.failures), but we return nothing all the
+            # same.  (TODO: Consider whether this is the correct course
+            # of action.)
             fail = True
-        
-        return feed if not fail else None
-    
-    def get_feeds(self, from_file=False):
-        self.failures = {}
-        if from_file:
-            self.feeds = self.profile.feeddata
+            self.failures.pop(url)
+            logging.info('Got empty or unmodified feed at %s.', url)
+        if fail:
+            return None
         else:
-            self.feeds = self.profile.feedlist.feeds
+            return feed
     
-    def update_profile(self):
-        update_time = datetime.now().timetuple()
-        self.profile.set_last_updated(update_time)
-        for f in self.profile.feedlist:
-            self.profile.set_last_updated(update_time, f['xmlUrl'])
-        # finish
+    #def get_feeds(self, from_file=False):
+    #    self.failures = {}
+    #    if from_file:
+    #        self.feeds = self.profile.feeddata
+    #    else:
+    #        self.feeds = self.profile.feedlist.feeds
     
-    def load_feeds(self):
-        # Load feeds from file
-        with open(self.profile.data_file) as f:
-            self.feeds = json.load(f)
+    #def load_feeds(self):
+    #    # Load feeds from file
+    #    with open(self.profile.data_file) as f:
+    #        self.feeds = json.load(f)
     
     def update_feeds(self):
-        # TODO: Currently we rely on feedlist and feeddata being the 
-        # same length and in the same order.  This won't work if the
-        # list of feeds is changed.  We need to either do this more
-        # flexibly so that it doesn't rely on strict alignment, or else
-        # control access to feedlist such that requisite changes are
-        # always made to feeddata.  This may be easiest.
+        """Updates self.feeds to contain only the entries that have been
+        posted since the relevant feed was last updated.
+        
+        Returns the feeds that failed to update, in the form of a
+        dict mapping each feed URL to its error."""
+        
+        logging.info('Updating feeds.')
         self.failures = {}
-        new_feeds = []
-        for u, f in zip(self.profile.feedlist, self.profile.feeddata):
-            new_feeds.append(self.get_new(u['xmlUrl'], f))
+        new_feeds = {}
+        for feedlist_entry in self.profile.feedlist:
+            url = feedlist_entry['xmlUrl']
+            feed = self.profile.feeddata[url]
+            new_feeds[url] = self.get_new(url, feed)
         self.feeds = new_feeds
+        return self.failures
+    
+    @property
+    def ordered_feeds(self):
+        _ordered_feeds = []
+        for entry in self.profile.feedlist:
+            _ordered_feeds.append(self.feeds[entry['xmlUrl']])
+        return _ordered_feeds
     
     @property
     def non_empty_feeds(self):
-        return [f for f in self.feeds if f['entries']]
+        return [f for f in self.ordered_feeds if f['entries']]
         
     @property
     def empty_feeds(self):
-        return [f for f in self.feeds if not f['entries']]
+        return [f for f in self.ordered_feeds if not f['entries']]
     
     # Load and save state and feed data
     
@@ -127,14 +149,20 @@ class FeedHandler:
     def get_new(self, url, feed):
         """Takes a URL and an existing feed object, and returns an
         updated feed object with only the new entries since the existing
-        object was last updated
-        """
+        object was last updated.
+        
+        If we can't fetch a new feed object (either because there was an
+        error in fetching or because the feed was returned empty or
+        unmodified, just return the old feed but erase the entries."""
+
         etag = feed.get('etag')
         modified = feed.get('modified')
         new_feed = self.get_feed(url, etag=etag, modified=modified)
         if new_feed is None:
             new_feed = feed
             new_feed['entries'] = []
+            # TODO: consider what other attributes of the old feed we
+            # might need to update/reset.
         else:
             self.filter_old(new_feed, feed.get('updated_parsed'))
             # TODO: Should the below be localtime instead of gmtime?
@@ -147,13 +175,13 @@ class FeedHandler:
     @property
     def new_entries_total(self):
         total = 0
-        for f in self.feeds:
+        for f in self.feeds.values():
             total += self.new_entries_count(f)
         return total
     
     @property
     def updated_feeds(self):
-        return list(filter(lambda e: len(e['entries']), self.feeds))
+        return list(filter(lambda e: len(e['entries']), self.ordered_feeds))
     
     def get_author(self, entry):
         # Helper function to get the author of a feed in a convenient
