@@ -277,7 +277,7 @@ class Profile:
     def add_feed(self, title, url, posn=-1, save=True, *args, **kwargs):
         self.load_list()
         self.load_data()
-        self.feedlist.insert_feed(posn, title, 'rss', url,
+        self.feedlist.insert_feed(posn, 'rss', title, url,
             # Can't serialise None, so remove None args
             *filter(lambda a: a is not None, args),
             **{k: v for k, v in kwargs.items() if v is not None})

@@ -47,7 +47,7 @@ class FeedHandler:
         try:
             feed = feedparser.parse(url, **kwargs)
             #print(feed.link)
-            print(feed['feed']['link'])
+            #print(feed['feed']['link'])
             #if not feed.link:
             #    feed.link = url
         except BaseException as e:
@@ -101,7 +101,7 @@ class FeedHandler:
         new_feeds = {}
         for feedlist_entry in self.profile.feedlist:
             url = feedlist_entry['xmlUrl']
-            feed = self.profile.feeddata[url]
+            feed = self.profile.feeddata.get(url)
             new_feeds[url] = self.get_new(url, feed)
         self.feeds = new_feeds
         return self.failures
@@ -146,14 +146,20 @@ class FeedHandler:
         return new_feed # returning new_feed, but change is also made
                         # in place
     
-    def get_new(self, url, feed):
+    def get_new(self, url, feed=None):
         """Takes a URL and an existing feed object, and returns an
         updated feed object with only the new entries since the existing
         object was last updated.
         
+        If feed is None, we just return the whole new feed as there was
+        no previous feed. 
+        
         If we can't fetch a new feed object (either because there was an
         error in fetching or because the feed was returned empty or
         unmodified, just return the old feed but erase the entries."""
+
+        if feed is None:
+            return self.get_feed(url)
 
         etag = feed.get('etag')
         modified = feed.get('modified')
@@ -165,7 +171,18 @@ class FeedHandler:
             # might need to update/reset.
         else:
             self.filter_old(new_feed, feed.get('updated_parsed'))
-            # TODO: Should the below be localtime instead of gmtime?
+        
+        # Include certain additional data specific to rss-digest,
+        # such as the title of the feed as specified by the user.
+        # The reason we don't do this in get_feed is to ensure that, if
+        # the user has changed the name of the feed, that change is
+        # reflected.
+        # TODO:  This doesn't work, maybe we need to move it.
+        new_feeds[url]['rss-digest-data'] = {
+            'title': feedlist_entry['text']
+        }
+        
+        # TODO: Should the below be localtime instead of gmtime?
         self.profile.set_last_updated(gmtime(), new=True, url=url)
         return new_feed
     

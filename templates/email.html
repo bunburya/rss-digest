@@ -32,7 +32,7 @@
                     width: 100%;
                     padding: 10px;
                     background: rgba(68, 18, 18, 0.08) none repeat scroll 0% 0%">
-            <b>{{ f.feed.title }}</b> - {{ new_entries_count(f) }} new
+            <b>{{ f['rss-digest-data']['title'] }}</b> - {{ new_entries_count(f) }} new
             entr{{ 'ies' if new_entries_count(f) > 1 else 'y' }}</td></tr>
             
             {% for e in f.entries[:max_feed_posts] %}

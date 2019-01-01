@@ -19,7 +19,7 @@ from config import GlobalConfig, Profile
 from html_generator import HTMLGenerator
 from email_handler import EmailHandler
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 class RSSDigest:
     """This is the main class, that will be invoked from the command
@@ -58,17 +58,30 @@ class RSSDigest:
     def email_profile(self, profile):
         """Sends an RSS Digest email for the given profile."""
         # Running order:
-        # - load existing data from file
         # - fetch new feeds
-        # - filter new feeds using old feeds
+        # - filter new feeds using old feeds (loaded from file)
         # - save filtered feeds to file
         # - generate html from filtered feeds
         # - send email
-        profile.feed_handler.update_feeds()
-        html = self.html_generator.generate_html(profile)
+        html = self.get_output_for_profile(profile)
         self.email_handler.send_email(profile, html)
         profile.update_last_updated()
         profile.feed_handler.save()
+    
+    def get_output_for_profile(self, profile, save=False):
+        """Fetch new entries for a profile and return the related output
+        (the rendered template).
+        
+        Only save state and data if save=True (I expect this generally
+        won't be appropriate because we only want to save when we
+        successfully deliver the HTML to the user."""
+        
+        profile.feed_handler.update_feeds()
+        html = self.html_generator.generate_html(profile)
+        if save:
+            profile.update_last_updated()
+            profile.feed_handler.save()
+        return html
     
     def email_profile_name(self, name):
         self.email_profile(self.get_profile(name))
@@ -164,6 +177,22 @@ class CLInterface:
         except ValueError:
             print('Profile {} not found.'.format(name))
     
+    def print_profile_output_to_file(self):
+        # Print output to a specific file - the default is just for
+        # testing purposes.  Later, remove this or set a sensible default.
+        default_outfile = 'output.html'
+        name = self.force_input('Enter profile name: ',
+                                'You need to enter a profile name.')
+        outfile = input('Enter output file (default is $PWD/outfile.html):') or default_outfile
+        profile = self.app.get_profile(name)
+        html = self.app.get_output_for_profile(profile)
+        with open(outfile, 'w') as f:
+            f.write(html)
+        logging.info('Output for profile %s written to file %s.', name,
+                        outfile)
+        profile.update_last_updated()
+        profile.feed_handler.save()
+    
     def test_email(self):
         name = self.force_input('Enter profile name: ',
                                 'You need to enter a profile name.')
@@ -177,6 +206,7 @@ class CLInterface:
         print('del_profile:  Delete a profile.')
         print('email_profile:  Send an RSS digest email for a specific profile.')
         print('test_email:  Send a test email to a specific profile.')
+        print('print_file:  Print the output for a specific profile to a file.')
         print('exit:  Exit the app.')
         
     def eval_cmd(self):        
@@ -195,6 +225,8 @@ class CLInterface:
             self.email_profile()
         elif cmd == 'test_email':
             self.test_email()
+        elif cmd == 'print_file':
+            self.print_profile_output_to_file()
         elif cmd == 'exit':
             raise SystemExit
         else:
