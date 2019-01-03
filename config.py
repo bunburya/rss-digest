@@ -109,7 +109,7 @@ class UserConfig:
                 'date_format': '%A %d %B %Y',
                 'time_format': '%H:%M',
                 'datetime_format': '${date_format} at ${time_format}',
-                'categorised': 'false',
+                'use_categories': 'false',
                 'template': 'email.html'
             }})
         return conf_parser
@@ -285,3 +285,6 @@ class Profile:
         if save:
             self.save_data()
             self.save_list()
+    
+    def get_feed_by_url(self, url):
+        return self.feedlist.get_feed_by_url(url)

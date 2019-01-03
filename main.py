@@ -190,8 +190,8 @@ class CLInterface:
             f.write(html)
         logging.info('Output for profile %s written to file %s.', name,
                         outfile)
-        profile.update_last_updated()
-        profile.feed_handler.save()
+        #profile.update_last_updated()
+        #profile.feed_handler.save()
     
     def test_email(self):
         name = self.force_input('Enter profile name: ',

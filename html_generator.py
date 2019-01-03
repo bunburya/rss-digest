@@ -69,6 +69,7 @@ class HTMLGenerator:
         logging.info('Generating output for profile %s.', profile.name)
         
         feed_handler = profile.feed_handler
+        feedlist = profile.feedlist
         
         gen_date = datetime.now().strftime(profile.get_conf('date_format'))
         gen_time = datetime.now().strftime(profile.get_conf('time_format'))
@@ -109,7 +110,8 @@ class HTMLGenerator:
             'failures': feed_handler.failures,
             'len': len,
             'max_feed_posts': profile.get_conf('max_feed_posts'),
-            'categorised': profile.get_conf('categorised', 'bool'),
+            'use_categories': profile.get_conf('use_categories', 'bool'),
+            'categories': feedlist.categories
             #finish
             }
            

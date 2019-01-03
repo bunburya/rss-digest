@@ -14,6 +14,8 @@ except ImportError:
     from xml.etree.ElementTree import ElementTree, SubElement, Element, parse, tostring
     has_lxml = False
 
+class FeedNotFoundError(Exception): pass
+
 class FeedURLList:
     
     # How we maintain feeds and categories is as follows:
@@ -55,6 +57,7 @@ class FeedURLList:
         elif 'title' in f:
             text = f['title']
         feed = self.append_feed(_type, text, xmlUrl, category=category, **f)
+        logging.info('Added feed %s with category %s to feedlist.', text, category)
         if category is not None:
             if category in self.categories:
                 self.categories[category].append(feed)
@@ -71,11 +74,13 @@ class FeedURLList:
         if category is None:
             if attr['type'] == 'category':
                 # We are in a top-level category.
+                logging.info('Found top-level category element %s.', attr['text'])
                 self.categories[attr['text']] = []
                 for outline in elem:
                     self._parse_outline_elem(outline, attr['text'])
             elif attr['type'] == 'rss':
                 # We are in a top-level RSS feed (no category).
+                logging.info('Found top-level RSS element %s.', attr['text'])
                 self._parse_rss_outline_elem(elem)
             else:
                 # We are in a top-level outline element that is not of
@@ -93,6 +98,7 @@ class FeedURLList:
                     self._parse_rss_outline_elem(outline, category=category)
             elif attr['type'] == 'rss':
                 # We are in an RSS feed inside a category.
+                logging.info('Found RSS element %s in category %s.', attr['text'], category)
                 self._parse_rss_outline_elem(elem, category=category)
             else:
                 # We are in an outline element within a category that is
@@ -108,7 +114,10 @@ class FeedURLList:
         #     - title
         #     - date created
         #   - body
-        #     - outline (title, type, xmlUrl, category)
+        #     [- outline (title, text, type=rss, xmlUrl)
+        #     OR
+        #      - outline (text, type=category)
+        #        - outline (title, text, type=rss, xmlUrl)]
                 
         self.feeds = []
         et = parse(fpath)
@@ -120,6 +129,7 @@ class FeedURLList:
         except AttributeError:
             pass
         body = opml.find('body')
+        logging.info('Parsing outline XML elements in body of OPML.')
         for outline in body:
             self._parse_outline_elem(outline)
             
@@ -180,17 +190,34 @@ class FeedURLList:
         if not 'title' in f:
             f['title'] = text
         self.feeds.insert(i, f)
-        if cat is not None:
-            if cat in self.categories:
-                self.categories[cat].append(f)
-            else:
-                self.categories[cat] = [f]
+        if cat in self.categories:
+            self.categories[cat].append(f)
+        else:
+            self.categories[cat] = [f]
+        # None always at end so uncategorised feeds are shown last.
+        if None in self.categories:
+            self.categories.move_to_end(None)
         return f
     
-    def append_feed(self, *args, **kwargs):
+    def append_feed(self, _type, text, xmlUrl, **other):
         """Append a new feed to the end of the list.  Takes all the same
         args as insert_feed, except the first one (index)."""
-        return self.insert_feed(-1, *args, **kwargs)
+        f = other
+        f['type'] = _type
+        f['text'] = text
+        f['xmlUrl'] = xmlUrl
+        cat = f.get('category')
+        if not 'title' in f:
+            f['title'] = text
+        self.feeds.append(f)
+        if cat in self.categories:
+            self.categories[cat].append(f)
+        else:
+            self.categories[cat] = [f]
+        # None always at end so uncategorised feeds are shown last.
+        if None in self.categories:
+            self.categories.move_to_end(None)
+        return f
     
     def remove_feed(self, i=None, title=None, url=None):
         """Remove a feed, specified by index, title OR url."""
@@ -209,11 +236,17 @@ class FeedURLList:
                     removed = self.feeds.pop(i)
                     break
         if removed is not None:
-            cat = removed['category']
+            cat = removed.get('category')
             if removed in self.categories[cat]:
                 self.categories[cat].remove(removed)
                 if not self.categories[cat]:
                     self.categories.pop(cat)
+    
+    def get_feed_by_url(self, url):
+        for f in self.feeds:
+            if f['xmlUrl'] == url:
+                return f
+        raise FeedNotFoundError('No feed for {} found.'.format(url))
     
     def get_categories(self):
         for c in self.categories:

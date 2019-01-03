@@ -8,9 +8,9 @@ from copy import deepcopy
 
 import feedparser
 
-class HTTPError(BaseException): pass
+class HTTPError(Exception): pass
 
-class FeedParseError(BaseException): pass
+class FeedParseError(Exception): pass
 
 class FeedHandler:
     
@@ -108,6 +108,7 @@ class FeedHandler:
     
     @property
     def ordered_feeds(self):
+        """Return the feeds in the order in which they appear in the OPML file."""
         _ordered_feeds = []
         for entry in self.profile.feedlist:
             _ordered_feeds.append(self.feeds[entry['xmlUrl']])
@@ -178,8 +179,8 @@ class FeedHandler:
         # the user has changed the name of the feed, that change is
         # reflected.
         # TODO:  This doesn't work, maybe we need to move it.
-        new_feeds[url]['rss-digest-data'] = {
-            'title': feedlist_entry['text']
+        new_feed['rss-digest-data'] = {
+            'title': self.profile.get_feed_by_url(url)['text']
         }
         
         # TODO: Should the below be localtime instead of gmtime?
