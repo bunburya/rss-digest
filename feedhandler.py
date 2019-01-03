@@ -179,8 +179,10 @@ class FeedHandler:
         # the user has changed the name of the feed, that change is
         # reflected.
         # TODO:  This doesn't work, maybe we need to move it.
+        feedlist_entry = self.profile.get_feed_by_url(url)
         new_feed['rss-digest-data'] = {
-            'title': self.profile.get_feed_by_url(url)['text']
+            'title': feedlist_entry['text'],
+            'category': feedlist_entry.get('category')
         }
         
         # TODO: Should the below be localtime instead of gmtime?
