@@ -14,13 +14,14 @@
             width: 100%;
             background: rgba(68, 18, 18, 0.08) none repeat scroll 0% 0%;
         }
-        .feed_title {
+        .category_title {
+            font-size: 1.1em;
             margin-top: 2px;
             margin-bottom: 2px;
             padding: 10px;
             background: rgba(145, 145, 209, 0.8);
         }
-        .entry, .more_entries {
+        .feed_title, .entry, .more_entries {
             margin-top: 2px;
             margin-bottom: 2px;
             padding: 10px;
@@ -34,7 +35,7 @@
 </head>
 
 <body>
-    
+
     Hi {{ name }},
     
     <p>This is your RSS feed digest for {{ date }}.
@@ -44,40 +45,54 @@
     been {{ new_entries_total }} new post{{ 's' if new_entries_total > 1 }} to
     {{ updated_feeds_count }} of your {{ subscribed_feeds_count }} subscribed
     feeds.</p>
-        
+            
     <div class="content_container">
         
-        {% for f in non_empty_feeds %}
+    {% for c in categories %}
+    
+        <div class="category_container">
         
-            <div class="feed_title">
-                <b><a href="{{ get_feed_url(f) }}">{{ f['rss-digest-data']['title'] }}</a></b> - {{ new_entries_count(f) }}
-                new entr{{ 'ies' if new_entries_count(f) > 1 else 'y' }}
-            </div>
+            <div class="category_title"><b>
+                {% if c is none %} [Uncategorised] {% else %} {{ c }} {% endif %}
+            </b></div>
+    
+            {% for f in non_empty_feeds %}
+            {% if f['rss-digest-data']['category'] == c %}
                 
-            {% for e in f.entries[:max_feed_posts] %}
-            
-            <div class="entry">
-                <a href="{{ e.link }}" style="color: rgb(140, 60, 60);">
-                {{ e.title }}</a> (submitted by {{ get_author(e) }}
-                on {{ get_date(e) }})
-            </div>
-            
-            {% endfor %}
-                    
-            {% if max_feed_posts and (new_entries_count(f) > max_feed_posts) %}
-
-            <div class="more_entries">
-                {{ new_entries_count(f) - max_feed_posts  }} more new posts
-                at <a href="{{ get_feed_url(f) }}" style="color: rgb(140, 60, 60);">
-                {{ f['rss-digest-data']['title'] }}</a> 
-            </div>
-            
+                <div class="feed_title">
+                    <b><a href="{{ get_feed_url(f) }}">{{ f['rss-digest-data']['title'] }}</a></b> - {{ new_entries_count(f) }}
+                    new entr{{ 'ies' if new_entries_count(f) > 1 else 'y' }}
+                </div>
+                
+                {% for e in f.entries[:max_feed_posts] %}
+                
+                <div class="entry">
+                    <a href="{{ e.link }}" style="color: rgb(140, 60, 60);">
+                    {{ e.title }}</a> (submitted by {{ get_author(e) }}
+                    on {{ get_date(e) }})
+                </div>
+                
+                {% endfor %}
+                        
+                {% if max_feed_posts and (new_entries_count(f) > max_feed_posts) %}
+    
+                <div class="more_entries">
+                    {{ new_entries_count(f) - max_feed_posts  }} more new posts
+                    at <a href="{{ get_feed_url(f) }}" style="color: rgb(140, 60, 60);">
+                    {{ f['rss-digest-data']['title'] }}</a> 
+                </div>
+                
+                {% endif %}
+                
             {% endif %}
-                
-        {% endfor %}
+            {% endfor %}
                                 
+        </div>
+        
+    {% endfor %}
+    
     </div>
-                    
+            
     {% if empty_feeds %}
     <p>
         {% if len(empty_feeds) == 1 %}
@@ -88,7 +103,7 @@
         {% endif %}
     </p>
     {% endif %}
-	
+    
 </body>
 
 </html>

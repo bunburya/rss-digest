@@ -86,6 +86,11 @@ class HTMLGenerator:
         failures = feed_handler.failures.keys()
         if failures:
             logging.warn('Failed to load %d feeds.', len(failures))
+        
+        try:
+            max_feed_posts = int(profile.get_conf('max_feed_posts'))
+        except TypeError:
+            max_feed_posts = None
 
         output_context_data = {
             'name': profile.get_conf('user_name'),
@@ -109,7 +114,7 @@ class HTMLGenerator:
             'empty_feed_titles': empty_feed_titles,
             'failures': feed_handler.failures,
             'len': len,
-            'max_feed_posts': profile.get_conf('max_feed_posts'),
+            'max_feed_posts': max_feed_posts,
             'use_categories': profile.get_conf('use_categories', 'bool'),
             'categories': feedlist.categories
             #finish
