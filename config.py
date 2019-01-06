@@ -96,9 +96,6 @@ class UserConfig:
         stdout."""
         
         conf_parser = ConfigParser(interpolation=ExtendedInterpolation())
-        print(self.profile.name)
-        print(self.profile.email)
-        print(self.profile.profile_dir)
 
         conf_parser.read_dict(
             # TODO:  Save this to another file, defaults.json or something
