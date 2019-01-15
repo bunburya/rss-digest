@@ -70,7 +70,14 @@ class FeedHandler:
             # same.  (TODO: Consider whether this is the correct course
             # of action.)
             fail = True
-            self.failures.pop(url)
+            if url in self.failures:
+                # If url has been added to failures (because an exception
+                # has been raised), remove it because we don't want to report
+                # this as a failure.
+                # NOTE: Not ideal because what if an exception was raised
+                # for another reason (actually failure related)?
+                # Could that happen?
+                self.failures.pop(url)
             logging.info('Got empty or unmodified feed at %s.', url)
         if fail:
             return None
