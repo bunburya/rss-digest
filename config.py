@@ -28,7 +28,7 @@ def load_json(fpath, empty_type=dict):
     
 def save_json(data, fpath):
     with open(fpath, 'w') as f:
-        dump(data, f)
+        dump(data, f, indent=4)
 
 class GlobalConfig:
     
