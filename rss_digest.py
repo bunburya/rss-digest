@@ -42,7 +42,7 @@ class RSSDigest:
     def del_profile(self, name):
         rmtree(join(self.profiles_dir, name), ignore_errors=True)
     
-    def email_profile(self, profile):
+    def email_profile(self, profile, update=True):
         """Sends an RSS Digest email for the given profile."""
         # Running order:
         # - fetch new feeds
@@ -52,10 +52,11 @@ class RSSDigest:
         # - send email
         html = self.get_output_for_profile(profile)
         self.email_handler.send_email(profile, html)
-        profile.update_last_updated()
-        profile.feed_handler.save()
+        if update:
+            profile.update_last_updated()
+            profile.feed_handler.save()
     
-    def get_output_for_profile(self, profile, save=False):
+    def get_output_for_profile(self, profile, update=False):
         """Fetch new entries for a profile and return the related output
         (the rendered template).
         
@@ -65,10 +66,10 @@ class RSSDigest:
         
         profile.feed_handler.update_feeds()
         html = self.html_generator.generate_html(profile)
-        if save:
+        if update:
             profile.update_last_updated()
             profile.feed_handler.save()
         return html
     
-    def email_profile_name(self, name):
-        self.email_profile(self.get_profile(name))
+    def email_profile_name(self, name, update=True):
+        self.email_profile(self.get_profile(name), update=update)

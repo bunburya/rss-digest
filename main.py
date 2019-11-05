@@ -20,6 +20,10 @@ def launch_cli_ui(app):
 def run_profile(app, profile):
     
     app.email_profile_name(profile)
+
+def dryrun_profile(app, profile):
+    
+    app.email_profile_name(update=False)
     
 if __name__ == '__main__':
     
@@ -30,6 +34,11 @@ if __name__ == '__main__':
     elif argv[1] == 'run':
         try:
             run_profile(app, argv[2])
+        except IndexError:
+            print('Please specify profile name to run.')
+    elif argv[1] == 'dryrun':
+        try:
+            dryrun_profile(app, argv[2])
         except IndexError:
             print('Please specify profile name to run.')
     else:
