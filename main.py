@@ -23,7 +23,7 @@ def run_profile(app, profile):
 
 def dryrun_profile(app, profile):
     
-    app.email_profile_name(update=False)
+    app.email_profile_name(profile, update=False)
     
 if __name__ == '__main__':
     
