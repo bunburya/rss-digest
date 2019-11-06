@@ -8,6 +8,10 @@ from copy import deepcopy
 
 import feedparser
 
+# NOTE:  Always use feed['entries'] syntax, not feed.entries, because if we are
+# reloading a previously saved feed object, the feedparser attributes will be lost
+# and we'll just have a dict
+
 class HTTPError(Exception): pass
 
 class FeedParseError(Exception): pass
@@ -46,10 +50,6 @@ class FeedHandler:
         fail = False
         try:
             feed = feedparser.parse(url, **kwargs)
-            #print(feed.link)
-            #print(feed['feed']['link'])
-            #if not feed.link:
-            #    feed.link = url
         except BaseException as e:
             fail = True
             self.failures[url] = e
@@ -139,16 +139,15 @@ class FeedHandler:
         self.profile.load_data()
         self.profile.load_state()        
     
-    def filter_old(self, new_feed, updated_parsed):
-        # updated_parsed is when the OLD feed was last updated
-        if updated_parsed is None:
-            # If there is no updated_parse, feed is probably new
+    def filter_old(self, new_feed, feed_last_update):
+        # feed_last_update is when the OLD feed was last updated
+        if feed_last_update is None:
+            # If there is no feed_last_update, feed is probably new
             # so there is nothing to be done.
             return new_feed
         entries = []
         for e in new_feed['entries']:
-            updated = self.get_date(e)
-            if updated > struct_time(updated_parsed):
+            if self.get_entry_date(e) > feed_last_update:
                 entries.append(e)
         new_feed['entries'] = entries
         return new_feed # returning new_feed, but change is also made
@@ -178,7 +177,7 @@ class FeedHandler:
             # TODO: consider what other attributes of the old feed we
             # might need to update/reset.
         else:
-            self.filter_old(new_feed, feed.get('updated_parsed'))
+            self.filter_old(new_feed, self.get_feed_date(feed))
         
         # Include certain additional data specific to rss-digest,
         # such as the title of the feed as specified by the user.
@@ -232,7 +231,7 @@ class FeedHandler:
                 author = authors[0].get('name', 'unknown')
         return author
     
-    def get_date(self, entry, fmt=None):
+    def get_entry_date(self, entry, fmt=None):
         date_struct = struct_time(
             entry.get('updated_parsed', entry.published_parsed))
         if fmt is not None:
@@ -240,5 +239,23 @@ class FeedHandler:
         else:
             return date_struct
 
+    def get_feed_date(self, feed, fmt=None):
+        if not feed:
+            return struct_time([0] * 9) # empty dict, meaning we had no prior data for this feed
+                                        # so all feeds will be later in time
+        date_struct = struct_time(
+                feed.get('updated_parsed', feed['feed'].get('updated_parsed')))
+        if date_struct is None:
+            latest = None
+            for e in feed['entries']:
+                st = self.get_entry_date(e)
+                if (latest is None) or (st > latest):
+                    latest = st
+            date_struct = latest
+        if fmt is not None:
+            return strftime(fmt, date_struct)
+        else:
+            return date_struct
+
     def get_feed_url(self, feed):
-        return feed.feed['link'] or feed.feed['links'][0].href
+        return feed['feed']['link'] or feed['feed']['links'][0]['href']

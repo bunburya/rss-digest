@@ -82,7 +82,7 @@ class HTMLGenerator:
                             profile.get_last_updated())
         
         empty_feeds = feed_handler.empty_feeds
-        empty_feed_titles = '; '.join(f['feed']['title'] for f in empty_feeds)
+        empty_feed_titles = '; '.join(f['rss-digest-data']['title'] for f in empty_feeds)
         failures = feed_handler.failures.keys()
         if failures:
             logging.warn('Failed to load %d feeds.', len(failures))
@@ -105,7 +105,7 @@ class HTMLGenerator:
             'subscribed_feeds_count': len(feed_handler.feeds),
             'new_entries_count': feed_handler.new_entries_count,
             'get_author': feed_handler.get_author,
-            'get_date': lambda e: feed_handler.get_date(e,
+            'get_date': lambda e: feed_handler.get_entry_date(e,
                                 profile.get_conf('datetime_format')),
             'get_feed_url': feed_handler.get_feed_url,
             'last_update': last_update,
