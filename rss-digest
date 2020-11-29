@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import argparse
+
+from rss_digest.cli import CLI
+from rss_digest.rss_digest import RSSDigest
+
+COMMANDS = [
+    'profiles',
+    'add_profile',
+    'view_profile',
+    'edit_profile',
+    'delete_profile',
+    'add_feed',
+    'view_feeds',
+    'delete_feed'
+    'run'
+]
+
+
+def get_arg_parser(cli: CLI) -> argparse.ArgumentParser:
+
+    parser = argparse.ArgumentParser(description='Send an email digest of subscribed RSS feeds.')
+    subparsers  = parser.add_subparsers()
+
+    profiles_parser = subparsers.add_parser('list_profiles', description='View the list of available profiles.')
+    profiles_parser.set_defaults(func=cli.list_profiles)
+
+    add_profile_parser = subparsers.add_parser('add_profile', description='Add a new profile.')
+    add_profile_parser.add_argument('profile_name', description='The name of the profile.')
+    add_profile_parser.add_argument('email', description='The email address for the profile.')
+    add_profile_parser.add_argument('user_name', required=False,
+                                    description='The name of the user of the profile (which will be used in the email, '
+                                                'for example). If not provided, defaults to the profile name.')
+    add_profile_parser.set_defaults(func=cli.add_profile)
+
+    view_profile_parser = subparsers.add_parser('view_profile', description='View the details of a given profile.')
+    view_profile_parser.add_argument('profile_name', description='Name of profile to view.')
+    view_profile_parser.set_defaults(func=cli.view_profile)
+
+    edit_profile_parser = subparsers.add_parser('edit_profile', description='Edit the details of a given profile.')
+    edit_profile_parser.add_argument('profile_name', description='Name of profile to edit.')
+    #edit_profile_parser.add_argument('--profile-name', description='New profile name.')
+    edit_profile_parser.add_argument('--email', description='New email address.')
+    edit_profile_parser.add_argument('--user-name', description='New user name.')
+    edit_profile_parser.set_defaults(func=cli.edit_profile)
+
+    delete_profile_parser = subparsers.add_parser('delete_profile', description='Delete the given profile.')
+    delete_profile_parser.add_argument('profile_name', description='Name of profile to delete.')
+    delete_profile_parser.set_defaults(func=cli.delete_profile)
+
+    add_feed_parser = subparsers.add_parser('add_feed', description='Add a feed.')
+    add_feed_parser.add_argument('profile_name', description='Name of profile.')
+    add_feed_parser.add_argument('url', description='URL of RSS feed.')
+    add_feed_parser.add_argument('category', description='(Optional) category in which to include feed.')
+    add_feed_parser.set_defaults(func=cli.add_feed)
+
+
+### LEGACY CODE BELOW
+
+from sys import argv
+
+from rss_digest.tui import CLInterface
+from rss_digest.rss_digest import RSSDigest
+
+def launch_cli_ui(app):
+    
+    ui = CLInterface(app)
+    ui.repl()
+
+def run_profile(app, profile):
+    
+    app.email_profile_name(profile)
+
+def dryrun_profile(app, profile):
+    
+    app.email_profile_name(profile, update=False)
+    
+if __name__ == '__main__':
+    
+    app = RSSDigest()
+
+    if len(argv) == 1:
+        launch_cli_ui(app)
+    elif argv[1] == 'run':
+        try:
+            run_profile(app, argv[2])
+        except IndexError:
+            print('Please specify profile name to run.')
+    elif argv[1] == 'dryrun':
+        try:
+            dryrun_profile(app, argv[2])
+        except IndexError:
+            print('Please specify profile name to run.')
+    else:
+        print('Command not supported.')

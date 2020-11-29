@@ -111,7 +111,7 @@ class CLInterface:
         name = self.force_input('Enter profile name: ',
                                 'You need to enter a profile name.')
         profile = self.app.get_profile(name)
-        self.app.email_handler.test_email(profile)
+        self.app.email_sender.test_email(profile)
     
     def print_cmds(self):
         print('Commands (none of these take arguments; you will be prompted for input after entering the commands):')

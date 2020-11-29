@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+reader = "*"
+jinja2 = "*"
+appdirs = "*"
+lxml = "*"
+lxml-stubs = "*"
+pytest = "*"
+
+[dev-packages]
+pytest = "*"
+
+[requires]
+python_version = "3.8"
