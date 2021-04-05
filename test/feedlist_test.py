@@ -1,11 +1,12 @@
 import dataclasses
 import os
 import unittest
+from typing import Sequence
 
 from rss_digest.feedlist import FeedList
 
-OPML1 = os.path.join('test_data', 'opml', 'feeds.opml')
-OPML2 = os.path.join('test_data', 'opml', 'feeds2.opml')
+OPML1 = os.path.join('test_data', 'opml.old', 'feeds.opml.old')
+OPML2 = os.path.join('test_data', 'opml.old', 'feeds2.opml.old')
 
 
 class FeedListTestCase(unittest.TestCase):
@@ -15,12 +16,18 @@ class FeedListTestCase(unittest.TestCase):
         cls.feedlist1 = FeedList.from_opml_file(OPML1)
         cls.feedlist2 = FeedList.from_opml_file(OPML2)
 
+    def assertFeedsAre(self, feedlist: FeedList, feeds: Sequence):
+        feednames = [f.name for f in feedlist]
+        self.assertSequenceEqual(feednames, feeds)
+
+    def assertCategoriesAre(self, feedlist: FeedList, categories: Sequence):
+        self.assertSequenceEqual(feedlist.category_names, categories)
+
     def test_01_load(self):
         """Test that the OPML files have been loaded successfully."""
-        self.assertSequenceEqual(self.feedlist1.category_names, [None, 'Economics', 'Spanish'])
-        self.assertSequenceEqual(self.feedlist2.category_names, [None, 'Economics', 'Law', 'Fitness'])
-        feednames1 = [f.name for f in self.feedlist1]
-        self.assertSequenceEqual(feednames1, ['BBC Academy', 'Naked Capitalism', 'Bank Underground', 'El Blog Salmón'])
+        self.assertCategoriesAre(self.feedlist1, [None, 'Economics', 'Spanish'])
+        self.assertCategoriesAre(self.feedlist2, [None, 'Economics', 'Law', 'Fitness'])
+        self.assertFeedsAre(self.feedlist1, ['BBC Academy', 'Naked Capitalism', 'Bank Underground', 'El Blog Salmón'])
 
     def test_02_eq(self):
         """Test basic equality of feeds."""
@@ -38,10 +45,17 @@ class FeedListTestCase(unittest.TestCase):
         # Add to a new category
         self.feedlist1.add_feed('Above the Law', 'https://abovethelaw.com/feed/',
                                 category='Law')
-        self.assertSequenceEqual(self.feedlist1.category_names, [None, 'Economics', 'Spanish', 'Law'])
-        feednames1 = [f.name for f in self.feedlist1]
-        self.assertSequenceEqual(feednames1, ['BBC Academy', 'Runtastic', 'Naked Capitalism', 'Bank Underground',
-                                              'Liberty Street Economics', 'El Blog Salmón', 'Above the Law'])
+        self.assertCategoriesAre(self.feedlist1, [None, 'Economics', 'Spanish', 'Law'])
+        self.assertFeedsAre(self.feedlist1, ['BBC Academy', 'Runtastic', 'Naked Capitalism', 'Bank Underground',
+                                             'Liberty Street Economics', 'El Blog Salmón', 'Above the Law'])
+
+    def test_03_del_feed(self):
+        """Test deletion of feeds."""
+        # Remove by name
+        self.feedlist2.remove_feed(feed_name='Liberty Street Economics')
+        # Remove by URL
+        self.feedlist2.remove_feed(xml_url='https://criticalfinance.org/feed/')
+        # Remove by
 
 if __name__ == '__main__':
     unittest.main()

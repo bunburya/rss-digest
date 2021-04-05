@@ -156,14 +156,13 @@ class FeedList:
     def remove_feed(self, feed_name: Optional[str] = WILDCARD, xml_url: Optional[str] = WILDCARD,
                     category: Optional[str] = WILDCARD):
         query = FeedSearch(feed_name, xml_url, category)
+        # ???
         if category is not WILDCARD:
             to_search = category
         else:
             to_search = self.feeds
         for category in to_search:
             category.remove_feed(query)
-
-
 
     @property
     def category_names(self) -> List[str]:
@@ -173,14 +172,17 @@ class FeedList:
         return list(self.feeds.values())
 
     def __iter__(self):
+        """Iterate through a flattened list of :class:`Feed` objects."""
         for cat in self.feeds:
             for feed in self.feeds[cat]:
                 yield feed
 
     def to_opml(self) -> 'Element':
-        """Return the FeedList represented as an `opml` element."""
+        """Return the FeedList represented as an ``opml.old`` XML element.
 
-        opml = Element('opml', {'version': '1.0'})
+        :return: An :class:`Element` object representing the FeedList."""
+
+        opml = Element('opml.old', {'version': '1.0'})
         head = Element('head')
         opml.append(head)
         body = Element('body')
@@ -208,61 +210,65 @@ class FeedList:
         etree = ElementTree(self.to_opml())
         etree.write(fpath)
 
-    @classmethod
-    def from_opml(cls, elem: Element) -> 'FeedList':
-        """Generate a FeedList instance from an XML `opml` element."""
 
-        feeds = OrderedDict()
-        feeds[None] = FeedCategory(None)
+def from_opml(elem: Element) -> FeedList:
+    """Generate a :class:`FeedList` instance from an XML ``opml.old`` element.
 
-        head = elem.find('head')
-        if head is not None:
-            title_elem = head.find('title')
-            if title_elem is not None:
-                title = title_elem.text
-            else:
-                title = None
-            date_mod_elem = head.find('dateModified')
-            if date_mod_elem is not None:
-                date_modified = parsedate_to_datetime(date_mod_elem.text)
-            else:
-                date_modified = None
+    :param elem: An :class:`Element` of type ``opml.old``.
+    :return: A :class:`FeedList` object of the relevant feeds.
+
+    """
+
+    feeds = OrderedDict()
+    feeds[None] = FeedCategory(None)
+
+    head = elem.find('head')
+    if head is not None:
+        title_elem = head.find('title')
+        if title_elem is not None:
+            title = title_elem.text
         else:
             title = None
+        date_mod_elem = head.find('dateModified')
+        if date_mod_elem is not None:
+            date_modified = parsedate_to_datetime(date_mod_elem.text)
+        else:
             date_modified = None
+    else:
+        title = None
+        date_modified = None
 
-        body = elem.find('body')
-        if body is None:
-            raise BadOPMLError('OPML has no `body` element.')
+    body = elem.find('body')
+    if body is None:
+        raise BadOPMLError('OPML has no `body` element.')
 
-        for child in body:
-            outline_type = child.get('type')
-            if outline_type == 'category':
-                category = FeedCategory.from_opml(child)
-                name = category.name
-                if name in feeds:
-                    feeds[name].extend(category)
-                else:
-                    feeds[name] = category
-            elif outline_type == 'rss':
-                feeds[None].add_feed(Feed.from_opml(child))
+    for child in body:
+        outline_type = child.get('type') or 'category'  # Assume element is category element is no type specified
+        if outline_type == 'category':
+            category = FeedCategory.from_opml(child)
+            name = category.name
+            if name in feeds:
+                feeds[name].extend(category)
             else:
-                logging.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
+                feeds[name] = category
+        elif outline_type == 'rss':
+            feeds[None].add_feed(Feed.from_opml(child))
+        else:
+            logging.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
 
-        return FeedList(feeds=feeds, title=title, date_modified=date_modified)
+    return FeedList(feeds=feeds, title=title, date_modified=date_modified)
 
-    @classmethod
-    def from_opml_file(cls, fpath: str) -> 'FeedList':
-        try:
-            tree = parse(fpath)
-            feedlist = cls.from_opml(tree.getroot())
-            logging.info(f'Loaded feed list from OPML file {fpath}.')
-            return feedlist
-        # Python's standard ElementTree throws a FileNotFoundError
-        # here; lxml throws an OSError.
-        except (FileNotFoundError, OSError):
-            logging.info(f'OPML file not found at "{fpath}"; new file will be created on save.')
+def from_opml_file(fpath: str) -> FeedList:
+    try:
+        tree = parse(fpath)
+        feedlist = from_opml(tree.getroot())
+        logging.info(f'Loaded feed list from OPML file {fpath}.')
+        return feedlist
+    # Python's standard ElementTree throws a FileNotFoundError
+    # here; lxml throws an OSError.
+    except (FileNotFoundError, OSError):
+        logging.info(f'OPML file not found at "{fpath}"; new file will be created on save.')
 
 
-def get_feedlist(profile: Profile) -> FeedList:
-    return FeedList.from_opml_file(os.path.join(profile.profile_dir, 'feeds.opml'))
+def get_profile_feedlist(profile: Profile) -> FeedList:
+    return from_opml_file(os.path.join(profile.profile_dir, 'feeds.opml.old'))

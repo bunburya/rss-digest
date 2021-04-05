@@ -78,7 +78,7 @@ class Profile:
 
     @property
     def list_file(self):
-        return join(self.profile_dir, 'feeds.opml')
+        return join(self.profile_dir, 'feeds.opml.old')
 
     def load_list(self):
         self.feedlist = FeedURLList(self.list_file)

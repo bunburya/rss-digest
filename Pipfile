@@ -10,9 +10,7 @@ appdirs = "*"
 lxml = "*"
 lxml-stubs = "*"
 pytest = "*"
+requests = "*"
 
 [dev-packages]
 pytest = "*"
-
-[requires]
-python_version = "3.8"
