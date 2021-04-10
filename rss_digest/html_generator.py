@@ -53,8 +53,7 @@ class HTMLGenerator:
         logging.info('Initialising HTMLGenerator.')
         self.app = app
         self.global_config = app.config
-        self.template_loader = TemplateLoader(self,
-                                self.global_config.template_dir)
+        self.template_loader = TemplateLoader(self.global_config.template_dir)
         self.jinja_env = Environment(
             loader=self.template_loader,
             autoescape=select_autoescape(['html']))

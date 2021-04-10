@@ -1,5 +1,7 @@
 """Functions and classes for using the command line interface."""
+import sys
 import argparse
+from typing import Optional
 
 from rss_digest.config import Config
 from rss_digest.dao import ProfilesDAO
@@ -7,13 +9,23 @@ from rss_digest.exceptions import ProfileNotFoundError
 from rss_digest.profile import Profile, ProfileExistsError
 from rss_digest.rss_digest import RSSDigest
 
+def err(msg: str):
+    """Print a message to standard error.
+
+    :param msg: The message to print.
+
+    """
+    print(msg, file=sys.stderr)
 
 class CLI:
 
-    def __init__(self, config: Config):
-        self.config = config
-        self.rss_digest = RSSDigest(config)
-        self.profiles_dao = ProfilesDAO(config)
+    def __init__(self, config: Optional[Config] = None):
+        if config is None:
+            self.config = Config()
+        else:
+            self.config = config
+        self.rss_digest = RSSDigest(self.config)
+        self.profiles_dao = self.rss_digest.profiles_dao
 
     def list_profiles(self, args: argparse.Namespace):
         print('Available profiles:')
@@ -56,3 +68,22 @@ class CLI:
             print(f'Profile "{args.profile_name}" deleted.')
         except ProfileNotFoundError:
             print(f'Profile "{args.profile_name}" not found.')
+
+    def add_feed(self, args: argparse.Namespace):
+        """Add a new feed."""
+        pass
+
+    def view_feeds(self, args: argparse.Namespace):
+        """View all of the given profile's feeds."""
+        pass
+
+    def delete_feed(self, args: argparse.Namespace):
+        """Delete the given feed."""
+        pass
+
+    def run(self, args: argparse.Namespace):
+        """Run rss-digest for the given profile, fetching updates for
+        each feed and generating a digest.
+
+        """
+        pass

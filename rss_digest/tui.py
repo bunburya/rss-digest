@@ -2,8 +2,8 @@ import logging
 
 from os.path import exists
 
-class CLInterface:
-    """A very simple CLI for adding profiles and feeds."""
+class TUInterface:
+    """A very simple terminal user interface for adding profiles and feeds."""
     
     def __init__(self, app):
         self.app = app

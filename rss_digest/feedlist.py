@@ -243,7 +243,7 @@ def from_opml(elem: Element) -> FeedList:
         raise BadOPMLError('OPML has no `body` element.')
 
     for child in body:
-        outline_type = child.get('type') or 'category'  # Assume element is category element is no type specified
+        outline_type = child.get('type') or 'category'  # Assume element is category element if no type specified
         if outline_type == 'category':
             category = FeedCategory.from_opml(child)
             name = category.name

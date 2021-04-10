@@ -30,7 +30,7 @@ class BasicEmailSender(EmailSender):
             'username': uname,
             'password': passwd
         }
-        with open(self.email_data_file), as f:
+        with open(self.email_data_file, 'w') as f:
             json.dump(data, f)
 
     def load_email_data(self) -> dict:

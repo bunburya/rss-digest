@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sqlite3 as sql
 from typing import List, TYPE_CHECKING
 
@@ -23,9 +25,8 @@ class ProfilesDAO:
 
     LIST_PROFILES = 'SELECT profile_name FROM profiles'
 
-    def __init__(self, config: 'Config'):
-        self.config = config
-        self.conn = sql.connect(config.profiles_db)
+    def __init__(self, db_file: str):
+        self.conn = sql.connect(db_file)
 
     def save_profile(self, profile: 'Profile'):
         cursor = self.conn.cursor()

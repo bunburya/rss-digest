@@ -44,8 +44,6 @@ class Config:
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
 
-
-
     # email_data is data required to *send* the email to the user
     # (as distinct from the recipient email address, which will be
     # specified in the relevant profile config ini file).

@@ -18,8 +18,8 @@ class RSSDigest:
     
     def __init__(self, config: Config, profiles_dao: Optional[ProfilesDAO] = None):
         self.config = config
-        self.html_generator = HTMLGenerator(self)
-        self.email_sender = BasicEmailSender(config)
+        #self.html_generator = HTMLGenerator(self)
+        #self.email_sender = BasicEmailSender(config)
         self.profiles_dao = profiles_dao or ProfilesDAO(config.profiles_db)
 
     @property
