@@ -6,7 +6,7 @@ from typing import List, TYPE_CHECKING
 from rss_digest.exceptions import ProfileNotFoundError
 
 if TYPE_CHECKING:
-    from rss_digest.config import Config
+    from rss_digest.config import AppConfig
     from rss_digest.profile import Profile
 
 class ProfilesDAO:

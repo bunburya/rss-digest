@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
 import logging
 import os
 
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from email.utils import parsedate_to_datetime, format_datetime
-from typing import Optional, List, Generator, Tuple, OrderedDict as OrderedDictType, Any
+from typing import Optional, List, Generator, Tuple, OrderedDict as OrderedDictType, Any, Union
 
 from rss_digest.exceptions import FeedNotFoundError, BadOPMLError, CategoryExistsError
 from rss_digest.profile import Profile
@@ -45,14 +47,14 @@ class FeedSearch:
     values match the equivalent values of the Feed.
     """
 
-    name: Optional[str] = WILDCARD
+    title: Optional[str] = WILDCARD
     xml_url: Optional[str] = WILDCARD
     category: Optional[str] = WILDCARD
 
     def __eq__(self, other):
         return all((
             isinstance(other, Feed),
-            self.name == other.name,
+            self.title == other.title,
             self.xml_url == other.xml_url,
             self.category == other.category
         ))
@@ -62,31 +64,31 @@ class FeedSearch:
 class Feed:
     """A representation of a single feed."""
 
-    name: str
+    title: str
     xml_url: str
     category: Optional[str] = None
 
     def to_opml(self) -> Element:
-        return Element('outline', {'type': 'rss', 'text': self.name, 'xmlUrl': self.xml_url})
+        return Element('outline', {'type': 'rss', 'text': self.title, 'xmlUrl': self.xml_url})
 
     @staticmethod
     def from_opml(elem: Element, category: Optional[str] = None) -> 'Feed':
         attr = dict(elem.attrib)
         if 'text' in attr:
-            name = attr.pop('text')
+            title = attr.pop('text')
         elif 'title' in attr:
-            name = attr['title']
+            title = attr['title']
         else:
             logging.warning('RSS outline element has neither "text" nor "title" attribute.')
-            name = ''
-        return Feed(name=name, xml_url=attr['xmlUrl'], category=category)
+            title = ''
+        return Feed(title=title, xml_url=attr['xmlUrl'], category=category)
 
 
 @dataclass
 class FeedCategory:
     """A representation of a category of feeds."""
 
-    name: Optional[str]
+    name: Optional[str] = None
     feeds: List[Feed] = field(default_factory=list)
 
     def add_feed(self, feed: Feed, index: Optional[int] = None):
@@ -95,7 +97,7 @@ class FeedCategory:
         else:
             self.feeds.insert(index, feed)
 
-    def extend(self, other: 'FeedCategory'):
+    def extend(self, other: FeedCategory):
         self.feeds.extend(other.feeds)
 
     def to_opml(self) -> Element:
@@ -103,6 +105,26 @@ class FeedCategory:
         for feed in self.feeds:
             elem.append(feed.to_opml())
         return elem
+
+    def remove_feeds(self, feed: Union[Feed, FeedSearch]) -> int:
+        """Remove all feeds matching the given object.
+
+        :param feed: The feed to remove, as a :class:`Feed` or a
+            :class:`FeedSearch`. All feeds which equal the ``feed``
+            object will be removed.
+        :return: The number of feeds removed.
+
+        """
+        num_feeds = len(self.feeds)
+        self.feeds = list(filter(feed.__eq__, self.feeds))
+        return len(self.feeds) - num_feeds
+
+    def copy(self) -> FeedCategory:
+        """Return a deepcopy of this instance."""
+        return FeedCategory(
+            name=self.name,
+            feeds=[replace(f) for f in self.feeds]
+        )
 
     @classmethod
     def _flatten_category(cls, elem: Element) -> List[Feed]:
@@ -123,7 +145,7 @@ class FeedCategory:
         return feeds
 
     @classmethod
-    def from_opml(cls, elem: Element) -> 'FeedCategory':
+    def from_opml(cls, elem: Element) -> FeedCategory:
         category_name = elem.get('text')
         feeds = cls._flatten_category(elem)
         return FeedCategory(category_name, feeds)
@@ -137,8 +159,9 @@ class FeedList:
     """A representation of a list of feeds (optionally sorted into categories)."""
 
     feeds: OrderedDictType[Optional[str], FeedCategory]
-    title: Optional[str]
-    date_modified: Optional[datetime]
+    title: Optional[str] = None
+    date_modified: Optional[datetime] = None
+    opml_file: Optional[str] = None
 
     def add_category(self, name: str, overwrite: bool = False):
         if name in self.feeds and not overwrite:
@@ -153,16 +176,34 @@ class FeedList:
             self.add_category(category)
         self.feeds[category].add_feed(Feed(feed_name, xml_url, category))
 
-    def remove_feed(self, feed_name: Optional[str] = WILDCARD, xml_url: Optional[str] = WILDCARD,
-                    category: Optional[str] = WILDCARD):
-        query = FeedSearch(feed_name, xml_url, category)
-        # ???
+    def remove_feeds(self, feed_title: Optional[str] = WILDCARD, feed_url: Optional[str] = WILDCARD,
+                    category: Optional[str] = WILDCARD) -> int:
+        """Remove all feeds matching the given title, URL and category.
+
+        :param feed_title: Title of feed to remove.
+        :param feed_url: URL of feed to remove.
+        :param category: Category of feed to remove.
+        :return: The total number of feeds removed.
+
+        """
+        query = FeedSearch(feed_title, feed_url, category)
+        logging.debug(f'Deleting feeds matching {query}')
+        empty_categories = []
         if category is not WILDCARD:
-            to_search = category
+            to_search = [category]
         else:
             to_search = self.feeds
+        removed = 0
         for category in to_search:
-            category.remove_feed(query)
+            removed += self.feeds[category].remove_feeds(query)
+            if not self.feeds[category]:
+                empty_categories.append(category)
+        logging.debug(f'Removed {removed} feeds.')
+        for category in empty_categories:
+            logging.debug(f'Category "{category}" is empty; removing.')
+            self.remove_category(category)
+
+        return removed
 
     @property
     def category_names(self) -> List[str]:
@@ -171,18 +212,29 @@ class FeedList:
     def categories(self) -> List[FeedCategory]:
         return list(self.feeds.values())
 
+    def copy(self) -> FeedList:
+        """Return a deepcopy of this instance."""
+        return FeedList(
+            feeds=OrderedDict((name, self.feeds[name].copy()) for name in self.feeds),
+            title=self.title,
+            date_modified=None,
+            opml_file=self.opml_file
+        )
+
     def __iter__(self):
         """Iterate through a flattened list of :class:`Feed` objects."""
-        for cat in self.feeds:
-            for feed in self.feeds[cat]:
+        for category in self.feeds:
+            for feed in self.feeds[category]:
                 yield feed
 
-    def to_opml(self) -> 'Element':
-        """Return the FeedList represented as an ``opml.old`` XML element.
+    def to_opml(self) -> Element:
+        """Return the FeedList represented as an ``opml`` XML element.
 
-        :return: An :class:`Element` object representing the FeedList."""
+        :return: An :class:`Element` object representing the FeedList.
 
-        opml = Element('opml.old', {'version': '1.0'})
+        """
+
+        opml = Element('opml', {'version': '1.0'})
         head = Element('head')
         opml.append(head)
         body = Element('body')
@@ -206,15 +258,17 @@ class FeedList:
 
         return opml
 
-    def to_opml_file(self, fpath: str):
+    def to_opml_file(self, fpath: Optional[str] = None):
         etree = ElementTree(self.to_opml())
-        etree.write(fpath)
+        etree.write(fpath or self.opml_file)
 
 
-def from_opml(elem: Element) -> FeedList:
-    """Generate a :class:`FeedList` instance from an XML ``opml.old`` element.
+def from_opml(elem: Element, **kwargs) -> FeedList:
+    """Generate a :class:`FeedList` instance from an XML ``opml`` element.
 
-    :param elem: An :class:`Element` of type ``opml.old``.
+    :param elem: An :class:`Element` of type ``opml``.
+    :param kwargs: Other keyword arguments to provide to the
+        :class:`FeedList` constructor.
     :return: A :class:`FeedList` object of the relevant feeds.
 
     """
@@ -256,19 +310,24 @@ def from_opml(elem: Element) -> FeedList:
         else:
             logging.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
 
-    return FeedList(feeds=feeds, title=title, date_modified=date_modified)
+    return FeedList(feeds=feeds, title=title, date_modified=date_modified, **kwargs)
 
 def from_opml_file(fpath: str) -> FeedList:
+    """Create a :class:`FeedList` object from an OPML file. If the
+    file does not exist, return an empty FeedList object.
+
+    :param fpath: Path to the OPML file.
+    :return: A FeedList object containing the feeds in the OPML file,
+        or an empty FeedList if the OPML file does not exist.
+
+    """
+
     try:
         tree = parse(fpath)
-        feedlist = from_opml(tree.getroot())
+        feedlist = from_opml(tree.getroot(), opml_file=fpath)
         logging.info(f'Loaded feed list from OPML file {fpath}.')
         return feedlist
     # Python's standard ElementTree throws a FileNotFoundError
     # here; lxml throws an OSError.
     except (FileNotFoundError, OSError):
         logging.info(f'OPML file not found at "{fpath}"; new file will be created on save.')
-
-
-def get_profile_feedlist(profile: Profile) -> FeedList:
-    return from_opml_file(os.path.join(profile.profile_dir, 'feeds.opml.old'))

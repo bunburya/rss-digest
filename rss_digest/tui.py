@@ -80,7 +80,7 @@ class TUInterface:
                 print('You need to enter both a name and an email.')
         profile = self.app.new_profile(name, email)
         print('Profile {} added.  Now add some feeds.'.format(name))
-        self.add_feed(profile.name)
+        self.add_feed(profile.title)
     
     def email_profile(self):
         name = self.force_input('Enter profile name: ',

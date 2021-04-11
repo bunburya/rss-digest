@@ -1,35 +1,16 @@
 import os
 import shutil
+from dataclasses import dataclass
 from typing import Optional
 
-from rss_digest.config import Config
+from rss_digest.config import AppConfig
 from rss_digest.dao import ProfilesDAO
 from rss_digest.exceptions import ProfileExistsError
 
-
+@dataclass
 class Profile:
 
-    def __init__(self, config: Config, profile_name: str, email: str, user_name: Optional[str] = None,
-                 dao: Optional[ProfilesDAO] = None):
-        self.dao = dao or ProfilesDAO(config.profiles_db)
-        if profile_name in self.dao.list_profiles():
-            raise ProfileExistsError(f'Profile "{profile_name}" already exists. Try loading it instead.')
-        self.profile_name = profile_name
-        self.user_name = user_name or profile_name
-        self.email = email
-        self.profile_dir = os.path.join(config.profiles_dir, profile_name)
-        self.templates_dir = os.path.join(self.profile_dir, 'templates')
-        if not os.path.exists(self.templates_dir):
-            os.makedirs(self.templates_dir)
-
-
-    def save(self):
-        self.dao.save_profile(self)
-
-    def rmdirs(self):
-        shutil.rmtree(self.profile_dir)
-        shutil.rmtree(self.templates_dir)
-
+    name: str
 
     ### BELOW IS LEGACY CODE
 

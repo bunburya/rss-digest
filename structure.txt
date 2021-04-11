@@ -1,0 +1,49 @@
+Configuration structure:
+
+- config.ini: General configuration
+    - Name to use in output
+    - Output format
+    - Output method
+    - Number of entries to show per feed
+    - Whether to include updated entries
+
+- output.ini: Configuration relating to output methods
+    - smtp:
+        - email
+        - password
+        - host
+        - port
+    - file:
+        - filepath
+    - etc
+
+- feeds.opml: List of feeds
+
+File structure:
+
+- ~/.config/rss-digest
+    - config.ini: Global defaults
+    - output.ini: Global defaults
+    - "profiles" directory
+        - profile directory
+            - config.ini: Profile config (overrides global defaults)
+            - output.ini: Profile config (overrides global defaults)
+            - feeds.opml: Profile feeds
+
+- ~/.local/rss-digest
+    - "profiles" directory
+        - profile directory
+            - per-profile feed state (left to `reader` library)
+
+When adding a profile:
+
+- Create profile config directory in ~/.config/rss-digest/profiles
+- Create profile state directory in ~/.local/rss-digest/profiles
+- Create new Reader in `reader` library, with DB file in ~/.local/rss-digest/profiles/[name]
+
+When adding a feed:
+
+- If no OPML file exists in profile config directory, create it
+- Add feed to OPML file
+- If no reader database file exists in state directory, create new Reader in `reader` library
+- Add feed to Reader object

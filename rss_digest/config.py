@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# config.py
+from __future__ import annotations
+
 import os
 from json import dump, load
-from os import mkdir
-from os.path import exists, expanduser, join
-from configparser import ConfigParser, ExtendedInterpolation
-from typing import Optional
+from configparser import ConfigParser
+from typing import Optional, Any, Mapping
 
 import appdirs
 
 # Few helper functions
+from rss_digest.metadata import APP_NAME
+
 
 def load_json(fpath, empty_type=dict):
     try:
@@ -19,107 +20,220 @@ def load_json(fpath, empty_type=dict):
             return load(f)
     except FileNotFoundError:
         return empty_type()
-    
+
+
 def save_json(data, fpath):
     with open(fpath, 'w') as f:
         dump(data, f, indent=4)
 
-class Config:
-    
-    """A class to control and store global configuration settings."""
+MAIN_CONFIG_TYPES = {
+    'name': str,
+    'output_format': str,
+    'output_method': str,
+    'max_displayed_entries': int,
+    'include_updated': bool,
+    'date_format': str,
+    'time_format': str
+}
+
+OUTPUT_CONFIG_TYPES = {
+    'smtp': {
+        'username': str,
+        'password': str,
+        'from_email': str,
+        'from_name': str,
+        'to_email': str,
+        'to_name': str,
+        'server': str,
+        'port': int
+    },
+    'file': {
+        'path': str
+    }
+}
+
+class BaseConfig:
+    """A base class for configuration classes. Contains some common
+    methods for reading configurations (writing configurations is not
+    currently supported).
+
+    """
+
+    def __init__(self, main_config_file: str, output_config_file: str):
+        self.main_config_file = main_config_file
+        self.output_config_file = output_config_file
+
+        self.main_config = ConfigParser()
+        with open(self.main_config_file) as f:
+            self.main_config.read_file(f)
+
+        # Only load output.ini when we need it (as it could contain sensitive information)
+        self._output_config: Optional[ConfigParser] = None
+
+    @property
+    def output_config(self) -> ConfigParser:
+        if self._output_config is None:
+            self._output_config = ConfigParser()
+            with open(self.output_config_file) as f:
+                self._output_config.read_file(f)
+        return self._output_config
+
+    def _get_config_value(self, conf: ConfigParser, types: Mapping[str, type], section: str, key: str) -> Any:
+        """Look up the given configuration value and return it as the
+        appropriate datatype.
+
+        :param conf: The ConfigParser object to search.
+        :param section: The section of the ConfigParser object to check.
+        :param types: A mapping of configuration options to the
+            appropriate datatypes.
+        :param key: The name of the option to look up.
+        :return: The requested value, as the correct datatype.
+
+        """
+        raw_val = conf[section].get(key, None)
+        if raw_val is not None:
+            to_type = types[raw_val]
+            raw_val = to_type(raw_val)
+        return raw_val
+
+    def get_main_config_value(self, key: str) -> Any:
+        """Get the configuration value for a particular option from the
+        main configuration file.
+
+        :param key: The name of the option to look up.
+        :return: The specified value, as the correct datatype.
+
+        """
+        return self._get_config_value(self.main_config, MAIN_CONFIG_TYPES, 'defaults', key)
+
+    def get_output_config_value(self, section: str, key: str) -> Any:
+        """Get the configuration value for a particular option from the
+        output configuration file.
+
+        :param section: The section in the output configuration file to
+            search, corresponding to the type of output, eg, smtp.
+        :param key: The name of the option to look up.
+        :return: The specified value, as the correct datatype.
+
+        """
+        return self._get_config_value(self.output_config, OUTPUT_CONFIG_TYPES[section], section, key)
+
+
+class AppConfig(BaseConfig):
+    """A class to control and store app-level configuration settings."""
 
     def __init__(self, config_dir: Optional[str] = None, data_dir: Optional[str] = None):
-        self.config_dir = config_dir or appdirs.user_config_dir('rss-digest')
+        """Create a new AppConfig object.
 
-        self.profiles_dir = os.path.join(self.config_dir, 'profiles')
-        if not os.path.exists(self.profiles_dir):
-            os.makedirs(self.profiles_dir)
+        :param config_dir: Where to store the config directory.
+        :param data_dir: Where to store the data directory.
+
+        If an argument is not provided, a location will be chosen based
+        on the operating system (using the ``appdirs`` library).
+
+        """
+        self.config_dir = config_dir or appdirs.user_config_dir(APP_NAME)
+        self.profiles_config_dir = os.path.join(self.config_dir, 'profiles')
+        if not os.path.exists(self.profiles_config_dir):
+            os.makedirs(self.profiles_config_dir)
         self.templates_dir = os.path.join(self.config_dir, 'templates')
         if not os.path.exists(self.templates_dir):
             os.makedirs(self.templates_dir)
 
-        self.profiles_db = os.path.join(self.config_dir, 'profiles.db')
+        self.data_dir = data_dir or appdirs.user_data_dir(APP_NAME)
+        self.profiles_data_dir = os.path.join(self.data_dir, 'profiles')
+        if not os.path.exists(self.profiles_data_dir):
+            os.makedirs(self.profiles_data_dir)
 
-        self.data_dir = data_dir or appdirs.user_data_dir('rss-digest')
-        if not os.path.exists(self.data_dir):
-            os.makedirs(self.data_dir)
+        main_config_file = os.path.join(self.config_dir, 'config.ini')
+        output_config_file = os.path.join(self.config_dir, 'output.ini')
+        super().__init__(main_config_file, output_config_file)
 
-    # email_data is data required to *send* the email to the user
-    # (as distinct from the recipient email address, which will be
-    # specified in the relevant profile config ini file).
-    
-    @property
-    def email_data_file(self):
-        return join(self.conf_dir, 'email.json')
-    
-    def load_email_data(self):
-        self.email_data = load_json(self.email_data_file)
-    
-    def save_email_data(self, data):
-        self.email_data = data
-        save_json(data, self.email_data_file)
+    def get_profile_config_dir(self, name: str) -> str:
+        """Get the location of a profile configuration directory.
 
-class UserConfig:
+        :param name: The name of the profile.
+        :return: The path to the relevant directory.
 
-    """A class to control and store user-specific configuration settings."""
+        """
+        return os.path.join(self.profiles_config_dir, name)
 
-    def __init__(self, profile):
-        self.profile = profile
-        self.conf_dir = self.profile.conf_dir
-        if profile.is_new:
-            self.config = self.get_config()
-            self.config['profile']['email'] = self.profile.email
-        else:
-            self.config = self.load_config()
-    
-    def get_config(self):
-        """Create a ConfigParser instance and provide it with default
-        (required) values.
-        
-        NOTE:  We specify `email` as none (empty string).  For normal
-        usage, this will need to be overwritten with an email address.
-        We could, however, allow for some fallback action when no email
-        address is present, such as outputting the HTML content to
-        stdout."""
-        
-        conf_parser = ConfigParser(interpolation=ExtendedInterpolation())
+    def get_profile_data_dir(self, name: str) -> str:
+        """Get the location of a profile data directory.
 
-        conf_parser.read_dict(
-            # TODO:  Save this to another file, defaults.json or something
-            {'profile': {
-                'user_name': self.profile.name,
-                'email': '',
-                'dir_path': self.profile.profile_dir,
-                'date_format': '%A %d %B %Y',
-                'time_format': '%H:%M',
-                'datetime_format': '${date_format} at ${time_format}',
-                'use_categories': 'false',
-                'template': 'email.html'
-            }})
-        return conf_parser
-    
-    def load_config(self, conf_file=None):
-        if (conf_file is None) or (not conf_file):
-            conf_file = join(self.profile.profile_dir, 'rss-digest.ini')
-        config = self.get_config()
-        try:
-            with open(conf_file, 'r') as f:
-                config.read_file(f)
-        except FileNotFoundError:
-            # if there is no config file, that's okay, because we've
-            # already loaded sane defaults for all required options
-            pass
-        return config
-    
-    def save_config(self, conf_file=None):
-        if (conf_file is None) or (not conf_file):
-            conf_file = join(self.profile.profile_dir, 'rss-digest.ini')
-        with open(conf_file, 'w') as f:
-            self.config.write(f)
-    
-    def get(self, key, val_type=None):
-        if val_type == 'bool':
-            return self.config.getboolean('profile', key, fallback=None)
-        else:
-            return self.config.get('profile', key, fallback=None)
+        :param name: The name of the profile.
+        :return: The path to the relevant directory.
 
+        """
+        return os.path.join(self.profiles_data_dir, name)
+
+    def get_profile_config(self, name: str) -> ProfileConfig:
+        """Get a ProfileConfig object for a specific profile.
+
+        :param name: The name of the profile.
+        :return: A :class:`ProfileConfig` object for the relevant profile.
+
+        """
+        return ProfileConfig(self, name)
+
+
+class ProfileConfig(BaseConfig):
+    """A class to control and store profile-specific configuration
+    settings.
+
+    """
+
+    def __init__(self, app_config: AppConfig, profile_name: str):
+        """Create a new ProfileConfig object.
+
+        :param app_config: An :class:`AppConfig` object storing
+            app-level configuration options.
+        :param profile_name: The name of the profile.
+
+        """
+        self.app_config = app_config
+        self.profile_name = profile_name
+        self.config_dir = self.app_config.get_profile_config_dir(profile_name)
+        self.data_dir = self.app_config.get_profile_data_dir(profile_name)
+        for dir in (self.config_dir, self.data_dir):
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+
+        self.opml_file = os.path.join(self.config_dir, 'feeds.opml')
+        self.feeds_db_file = os.path.join(self.data_dir, 'feeds.db')
+
+        main_config_file = os.path.join(self.config_dir, 'config.ini')
+        output_config_file = os.path.join(self.config_dir, 'output.ini')
+        super().__init__(main_config_file, output_config_file)
+
+    def get_main_config_value(self, key: str) -> Any:
+        """Get the configuration value for a particular option from the
+        profile's main configuration file, or the app's main
+        configuration file if the option is not set in the profile's
+        configuration file.
+
+        :param key: The name of the option to look up.
+        :return: The specified value, as the correct datatype.
+
+        """
+        val = super().get_main_config_value(key)
+        if val is None:
+            val = self.app_config.get_main_config_value(key)
+        return val
+
+    def get_output_config_value(self, section: str, key: str) -> Any:
+        """Get the configuration value for a particular option from the
+        profile's output configuration file, or the app's output
+        configuration file if the option is not set in the profile's
+        configuration file.
+
+        :param section: The section in the output configuration file to
+            search, corresponding to the type of output, eg, smtp.
+        :param key: The name of the option to look up.
+        :return: The specified value, as the correct datatype.
+
+        """
+        val = super().get_main_config_value(key)
+        if val is None:
+            val = self.app_config.get_main_config_value(key)
+        return val

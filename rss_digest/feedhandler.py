@@ -36,7 +36,7 @@ class FeedHandler:
     def __init__(self, profile):
         
         self.profile = profile
-        self.name = profile.name
+        self.name = profile.title
         self.new_feeds = None
         self.failures = {}
         self.load()
