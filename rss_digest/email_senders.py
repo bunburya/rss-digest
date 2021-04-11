@@ -7,7 +7,7 @@ import smtplib
 import email.utils
 from email.mime.text import MIMEText
 
-from rss_digest.config import Config
+from rss_digest.config import AppConfig
 from rss_digest.profile import Profile
 
 ### Treat as legacy code for now
@@ -19,7 +19,7 @@ class EmailSender: pass
 class BasicEmailSender(EmailSender):
     """A basic email sender, which sends email via an SMTP server."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: AppConfig):
         self.config = config
         self.email_data_file = os.path.join(config.config_dir, 'email.json')
 
@@ -76,11 +76,11 @@ class BasicEmailSender(EmailSender):
 
         # Create the message
         msg = MIMEText('This is a test email.', 'html')
-        to_addr = (profile.name, profile.get_conf('email'))
+        to_addr = (profile.title, profile.get_conf('email'))
         msg['To'] = email.utils.formataddr(to_addr)
         from_addr = (email_data['author'], email_data['email'])
         msg['From'] = email.utils.formataddr(from_addr)
-        subj_str = 'Test email'.format(profile.name)
+        subj_str = 'Test email'.format(profile.title)
         msg['Subject'] = subj_str
 
         logging.info('Attempting to send test email to %s.', to_addr)

@@ -65,7 +65,7 @@ class HTMLGenerator:
         # initialising class with profile, so that one instance can be
         # used to generate the output for multiple profiles.
         
-        logging.info('Generating output for profile %s.', profile.name)
+        logging.info('Generating output for profile %s.', profile.title)
         
         feed_handler = profile.feed_handler
         feedlist = profile.feedlist

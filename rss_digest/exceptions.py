@@ -1,9 +1,7 @@
 """Commonly used custom exception classes."""
 
-
 class RSSDigestError(Exception):
     """Base class for all errors."""
-
 
 class ProfileError(RSSDigestError):
     """Base class for profile-related errors."""
@@ -51,12 +49,6 @@ class CategoryExistsError(FeedError):
     """
     pass
 
-
 class FeedExistsError(FeedError):
     """Attempted to add a new feed but that feed already exists."""
-    pass
-
-
-class BadConfigurationError(RSSDigestError):
-    """Some relevant value has not been configured properly."""
     pass
