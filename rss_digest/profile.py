@@ -1,127 +1,140 @@
-import os
-import shutil
+from __future__ import annotations
+
+import logging
+
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
-from rss_digest.config import AppConfig
-from rss_digest.dao import ProfilesDAO
-from rss_digest.exceptions import ProfileExistsError
+from reader import Reader, make_reader, FeedExistsError as reader_FeedExistsError, ParseError
+from rss_digest.config import ProfileConfig
+from rss_digest.exceptions import FeedExistsError, FeedError
+from rss_digest.feedlist import FeedList, from_opml_file, WILDCARD
+
 
 @dataclass
 class Profile:
 
     name: str
+    config: ProfileConfig
 
-    ### BELOW IS LEGACY CODE
-
-    def update_last_updated(self, failures=None):
-        """Set last_updated (for each feed, and for the profile as a
-        whole), to the current time."""
-        update_time = datetime.now().timetuple()
-        self.set_last_updated(update_time)
-        for f in self.feedlist:
-            self.set_last_updated(update_time, f['xmlUrl'])
-        # finish (is there anything else that needs to be done)?
-
-    # state is data related to the working of the rss-digest programme
-    # itself (as opposed to data relating to feeds, etc)
+    def __post_init__(self):
+        self._reader = None
+        self._feedlist = None
 
     @property
-    def state_file(self):
-        return join(self.profile_dir, 'state.json')
-
-    def load_state(self):
-        self.state = load_json(self.state_file)
-        self.new_state = {}
-        # If there is no state, assume this is the first run.
-        self.first_run = not self.state
-
-    def save_state(self):
-        if self.new_state:
-            self.state = self.new_state
-            self.new_state = {}
-        save_json(self.state, self.state_file)
-
-    # feeddata is data (entries, etc) relating to feeds that have
-    # already been downloaded
+    def feedlist(self) -> FeedList:
+        if self._feedlist is None:
+            self._feedlist = from_opml_file(self.config.opml_file)
+        return self._feedlist
 
     @property
-    def data_file(self):
-        return join(self.profile_dir, 'data.json')
+    def reader(self) -> Reader:
+        """Return a ``reader.Reader`` object for the profile.
 
-    def load_data(self):
-        self.feeddata = load_json(self.data_file)
+        NOTE: This does not automatically sync the reader with the OPML
+        file. Use the ``sync_reader`` method for that.
 
-    def save_data(self, data=None):
-        if data is not None:
-            self.feeddata = data
-        save_json(self.feeddata, self.data_file)
+        """
+        if self._reader is None:
+            self._reader = make_reader(self.config.feeds_db_file)
+        return self._reader
 
     @property
-    def list_file(self):
-        return join(self.profile_dir, 'feeds.opml.old')
+    def last_updated(self) -> datetime:
+        """Return the date and time at which a profile's feeds were
+        last updated (ie, fetched), in UTC.
 
-    def load_list(self):
-        self.feedlist = FeedURLList(self.list_file)
+        """
+        with open(self.config.last_updated_file) as f:
+            return datetime.fromisoformat(f.read())
 
-    def save_list(self):
-        self.feedlist.to_opml(self.list_file)
+    @last_updated.setter
+    def last_updated(self, dt: datetime):
+        with open(self.config.last_updated_file, 'w') as f:
+            f.write(dt.isoformat())
 
-    def get_last_updated(self, url=None):
-        # If url is None, this returns the last update of the feedlist
-        # as a whole (same goes for setter function below)
+    def sync_reader(self) -> Reader:
+        """Sync the profile's :class:`reader.Reader` to its OPML file
+        (adding feeds that are in the OPML file but not the Reader,
+        and deleting those that are in the Reader but not the OPML
+        file).
 
-        # NOTE:  We don't currently provide a way to access new_state,
-        # because I think when you are checking state you will always
-        # want the pre-existing state.
+        :param: The name of the profile whose Reader to sync.
+        :return: The modified Reader object.
 
-        # print(self.state)
+        """
+        logging.info(f'Syncing OPML file with reader database for profile {self.name}.')
+        feedlist = self.feedlist
+        reader = self.reader
+        opml_urls = {f.xml_url for f in feedlist}
+        reader_urls = {f.url for f in reader.get_feeds()}
+        removed = 0
+        added = 0
+        for url in reader_urls:
+            if url not in opml_urls:
+                reader.remove_feed(url)
+                removed += 1
+        for url in opml_urls:
+            if url not in reader_urls:
+                reader.add_feed(url)
+                added += 1
+        logging.debug(f'Removed {removed} feeds and added {added} feeds.')
+        return reader
 
-        updated_dict = self.state.get('last_updated', {})
-        if (url is None) and (None not in updated_dict):
-            # If we haven't set a specific value for the feedlist as a
-            # whole, just return the most recent URL-specific value
+    def add_feed(self, feed_url: str, feed_title: str, category: Optional[str] = None,
+                 test_feed: bool = False, mark_read: bool = False, fetch_title: bool = False,
+                 write: bool = True):
+        """Add a feed to the :class:`FeedList`.
+
+        :param feed_url: The URL of the feed.
+        :param feed_title: The title of the feed.
+        :param category: The category to which the feed belongs.
+        :param test_feed: If True, request the feed's URL to ensure
+            it is valid.
+        :param mark_read: If True, update the feed and mark all existing
+            entries as read immediately, so that the next time we
+            generate a digest only subsequently added entries will be
+            listed.
+        :param fetch_title: If True, request the feed URL and set the
+            title from the response. Overrides ``feed_title``.
+        :param write: If True, write the FeedList to the profile's OPML
+            file upon adding the feed.
+
+        """
+        reader = self.reader
+        try:
+            reader.add_feed(feed_url)
+        except reader_FeedExistsError:
+            raise FeedExistsError(f'Feed with URL already exists: {feed_url}')
+
+        if test_feed or mark_read or fetch_title:
             try:
-                result = max(updated_dict.values())
-            except ValueError:
-                result = None
-        else:
-            result = updated_dict.get(url)
+                reader.update_feed(feed_url)
+            except ParseError:
+                raise FeedError(f'Error fetching or parsing feed at URL: {feed_url}')
+            if mark_read:
+                for entry in reader.get_entries(feed=feed_url):
+                    reader.mark_as_read(entry)
+            if fetch_title:
+                feed_title = reader.get_feed(feed_url).title or feed_title
 
-        if result is None:
-            return result
-        else:
-            return struct_time(result)
+        feedlist = self.feedlist
+        feedlist.add_feed(feed_url, feed_title, category)
+        if write:
+            feedlist.to_opml_file(self.config.opml_file)
 
-    def set_last_updated(self, last_updated, url=None, new=True):
-        # if new == True, we save to self.new_state instead of
-        # self.state.  new_state is then copied to state when saving.
-        # This is to allow us to access the old last_updated value when
-        # generating HTML.  True is the default value because I think
-        # you will always want to save to the buffer.
+    def delete_feeds(self, feed_url: Optional[str] = WILDCARD, feed_title: Optional[str] = WILDCARD,
+                     category: Optional[str] = WILDCARD) -> int:
+        """Delete all feeds for the given profile and matching the given
+        title, URL and category.
 
-        if new:
-            state = self.new_state
-        else:
-            state = self.state
-        if 'last_updated' not in state:
-            state['last_updated'] = {}
-        state['last_updated'][url] = last_updated
+        :param profile: The profile to delete the feeds from.
+        :param feed_url: URL of feed to remove.
+        :param feed_title: Title of feed to remove.
+        :param category: Category of feed to remove.
+        :return: The total number of feeds removed.
 
-    def get_conf(self, key, val_type=None):
-        return self.config.get(key, val_type)
-
-    def add_feed(self, title, url, posn=-1, save=True, *args, **kwargs):
-        self.load_list()
-        self.load_data()
-        self.feedlist.insert_feed(posn, 'rss', title, url,
-                                  # Can't serialise None, so remove None args
-                                  *filter(lambda a: a is not None, args),
-                                  **{k: v for k, v in kwargs.items() if v is not None})
-        self.feeddata[url] = {}
-        if save:
-            self.save_data()
-            self.save_list()
-
-    def get_feed_by_url(self, url):
-        return self.feedlist.get_feed_by_url(url)
+        """
+        feedlist = self.feedlist
+        return feedlist.remove_feeds(feed_title, feed_url, category)

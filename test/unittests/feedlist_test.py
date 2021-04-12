@@ -3,7 +3,7 @@ import os
 import unittest
 from typing import Sequence
 
-from rss_digest.exceptions import FeedError
+from rss_digest.exceptions import FeedError, FeedExistsError
 from rss_digest.feedlist import FeedList, from_opml_file
 
 OPML1 = os.path.join('test_data', 'opml', 'own_feeds.opml')
@@ -78,11 +78,16 @@ class FeedListTestCase(unittest.TestCase):
         copy = self.feedlist1.copy()
 
         # Add to an existing category
-        copy.add_feed('CBS Moneywatch', 'http://www.cbsnews.com/latest/rss/moneywatch', category='Economics')
+        copy.add_feed('http://www.cbsnews.com/latest/rss/moneywatch', 'CBS Moneywatch', category='Economics')
         # Add to no category
-        copy.add_feed('CBS Opinion', 'http://www.cbsnews.com/latest/rss/opinion')
+        copy.add_feed('http://www.cbsnews.com/latest/rss/opinion', 'CBS Opinion')
         # Add to a new category
-        copy.add_feed('CBS News', 'http://www.cbsnews.com/latest/rss/evening-news', category='News')
+        copy.add_feed('http://www.cbsnews.com/latest/rss/evening-news', 'CBS News', category='News')
+
+        self.assertRaises(
+            FeedExistsError,
+            lambda: copy.add_feed('http://www.cbsnews.com/latest/rss/evening-news', 'CBS News Again', category='News')
+        )
 
         self.assertCategoriesAre(copy, [None, 'Economics', 'Law', 'Fitness', 'News'])
         self.assertFeedTitlesAre(copy, ['CBS Opinion', 'Liberty Street Economics', 'Critical Macro Finance',
@@ -96,16 +101,16 @@ class FeedListTestCase(unittest.TestCase):
         copy = self.feedlist1.copy()
         # Remove by name
         removed = copy.remove_feeds(feed_title='Liberty Street Economics')
-        self.assertEqual(removed, 1)
+        self.assertEqual(1, removed)
         # Remove by URL
         removed = copy.remove_feeds(feed_url='https://criticalfinance.org/feed/')
-        self.assertEqual(removed, 1)
+        self.assertEqual(1, removed)
         # Remove entire category
         removed = copy.remove_feeds(category='Fitness')
-        self.assertEqual(removed, 2)
+        self.assertEqual(2, removed)
         # Try to remove feed that's not there
         removed = copy.remove_feeds(feed_url='blah blah')
-        self.assertEqual(removed, 0)
+        self.assertEqual(0, removed)
         self.assertCategoriesAre(copy, [None, 'Economics', 'Law'])
         self.assertFeedTitlesAre(copy, ['Bank Underground', 'Musings on Markets', 'CLS Blue Sky Blog', 'Credit Slips',
                                         'Above the Law', 'The Biglaw Investor'])
