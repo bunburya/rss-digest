@@ -55,7 +55,7 @@ class TUInterface:
             title = input('Enter feed title: ')
             url = input('Enter feed URL: ')
             category = input('Enter category (blank for no category): ') or None
-            p.add_feed(title, url, posn=-1, save=False, category=category)
+            p.add_feed(url, title, category=category)
             again = input('Add another? (y/N) ')
             if not again.lower().startswith('y'):
                 save_and_quit = True

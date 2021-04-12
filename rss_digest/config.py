@@ -201,6 +201,7 @@ class ProfileConfig(BaseConfig):
 
         self.opml_file = os.path.join(self.config_dir, 'feeds.opml')
         self.feeds_db_file = os.path.join(self.data_dir, 'feeds.db')
+        self.last_updated_file = os.path.join(self.data_dir, 'last_updated')
 
         main_config_file = os.path.join(self.config_dir, 'config.ini')
         output_config_file = os.path.join(self.config_dir, 'output.ini')

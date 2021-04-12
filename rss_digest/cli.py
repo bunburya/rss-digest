@@ -4,8 +4,7 @@ import argparse
 from typing import Optional
 
 from rss_digest.config import AppConfig
-from rss_digest.exceptions import ProfileNotFoundError, FeedExistsError, FeedError
-from rss_digest.profile import ProfileExistsError
+from rss_digest.exceptions import ProfileNotFoundError, FeedExistsError, FeedError, ProfileExistsError
 from rss_digest.rss_digest import RSSDigest
 from rss_digest.metadata import APP_NAME
 
@@ -43,7 +42,6 @@ class CLI:
         else:
             self.config = config
         self.rss_digest = RSSDigest(self.config)
-        self.profiles_dao = self.rss_digest.profiles_dao
 
     def list_profiles(self, args: argparse.Namespace):
         print('Available profiles:')
