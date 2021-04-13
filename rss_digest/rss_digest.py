@@ -41,7 +41,7 @@ class RSSDigest:
         """
         if self.profile_exists(name):
             raise ProfileExistsError(f'Profile already exists: {name}')
-        return Profile(self.config.get_profile_config(name))
+        return Profile(name, self.config.get_profile_config(name))
 
     def delete_profile(self, profile_name: str):
         shutil.rmtree(self.config.get_profile_config_dir(profile_name))

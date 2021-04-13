@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from json import dump, load
 from configparser import ConfigParser
 from typing import Optional, Any, Mapping
@@ -59,13 +60,24 @@ class BaseConfig:
 
     """
 
-    def __init__(self, main_config_file: str, output_config_file: str):
+    def __init__(self, main_config_file: str, output_config_file: str,
+                 existing_main_config_file: Optional[str] = None,
+                 existing_output_config_file: Optional[str] = None,
+                 require_config: bool = False):
         self.main_config_file = main_config_file
+        if existing_main_config_file:
+            shutil.copy(existing_main_config_file, main_config_file)
         self.output_config_file = output_config_file
+        if existing_output_config_file:
+            shutil.copy(existing_output_config_file, output_config_file)
 
         self.main_config = ConfigParser()
-        with open(self.main_config_file) as f:
-            self.main_config.read_file(f)
+        try:
+            with open(self.main_config_file) as f:
+                self.main_config.read_file(f)
+        except FileNotFoundError as e:
+            if require_config:
+                raise e
 
         # Only load output.ini when we need it (as it could contain sensitive information)
         self._output_config: Optional[ConfigParser] = None
@@ -122,11 +134,16 @@ class BaseConfig:
 class AppConfig(BaseConfig):
     """A class to control and store app-level configuration settings."""
 
-    def __init__(self, config_dir: Optional[str] = None, data_dir: Optional[str] = None):
+    def __init__(self, config_dir: Optional[str] = None, data_dir: Optional[str] = None,
+                 existing_main_config_file: Optional[str] = None, existing_output_config_file: Optional[str] = None):
         """Create a new AppConfig object.
 
         :param config_dir: Where to store the config directory.
         :param data_dir: Where to store the data directory.
+        :param existing_main_config_file: A path to an existing config.ini file
+            to be copied to the appropriate location.
+        :param existing_output_config_file: A path to an existing output.ini file
+            to be copied to the appropriate location.
 
         If an argument is not provided, a location will be chosen based
         on the operating system (using the ``appdirs`` library).
@@ -147,7 +164,7 @@ class AppConfig(BaseConfig):
 
         main_config_file = os.path.join(self.config_dir, 'config.ini')
         output_config_file = os.path.join(self.config_dir, 'output.ini')
-        super().__init__(main_config_file, output_config_file)
+        super().__init__(main_config_file, output_config_file, existing_main_config_file, existing_output_config_file)
 
     def get_profile_config_dir(self, name: str) -> str:
         """Get the location of a profile configuration directory.
@@ -167,7 +184,8 @@ class AppConfig(BaseConfig):
         """
         return os.path.join(self.profiles_data_dir, name)
 
-    def get_profile_config(self, name: str) -> ProfileConfig:
+    def get_profile_config(self, name: str, config_ini: Optional[str] = None, output_ini: Optional[str] = None,
+                           opml_file: Optional[str] = None) -> ProfileConfig:
         """Get a ProfileConfig object for a specific profile.
 
         :param name: The name of the profile.
@@ -183,12 +201,17 @@ class ProfileConfig(BaseConfig):
 
     """
 
-    def __init__(self, app_config: AppConfig, profile_name: str):
+    def __init__(self, app_config: AppConfig, profile_name: str,
+                 existing_main_config_file: Optional[str] = None, existing_output_config_file: Optional[str] = None):
         """Create a new ProfileConfig object.
 
         :param app_config: An :class:`AppConfig` object storing
             app-level configuration options.
         :param profile_name: The name of the profile.
+        :param existing_main_config_file: A path to an existing config.ini file
+            to be copied to the appropriate location.
+        :param existing_output_config_file: A path to an existing output.ini file
+            to be copied to the appropriate location.
 
         """
         self.app_config = app_config
@@ -205,7 +228,7 @@ class ProfileConfig(BaseConfig):
 
         main_config_file = os.path.join(self.config_dir, 'config.ini')
         output_config_file = os.path.join(self.config_dir, 'output.ini')
-        super().__init__(main_config_file, output_config_file)
+        super().__init__(main_config_file, output_config_file, existing_main_config_file, existing_output_config_file)
 
     def get_main_config_value(self, key: str) -> Any:
         """Get the configuration value for a particular option from the
