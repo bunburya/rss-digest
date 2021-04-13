@@ -5,16 +5,18 @@ from typing import Sequence
 
 from rss_digest.exceptions import FeedError, FeedExistsError
 from rss_digest.feedlist import FeedList, from_opml_file
+from test.unittests._base import RSSDigestTestCaseBase
 
 OPML1 = os.path.join('test_data', 'opml', 'own_feeds.opml')
 OPML2 = os.path.join('test_data', 'opml', 'InfoSec-RSS-Feeds.opml')
 OPML3 = os.path.join('test_data', 'opml', 'feeds.opml')  # No categories
 
 import logging
+
 logging.getLogger().setLevel(logging.DEBUG)
 
-class FeedListTestCase(unittest.TestCase):
 
+class FeedListTestCase(RSSDigestTestCaseBase):
     """Tests for FeedList."""
 
     @classmethod
@@ -22,21 +24,6 @@ class FeedListTestCase(unittest.TestCase):
         cls.feedlist1 = from_opml_file(OPML1)
         cls.feedlist2 = from_opml_file(OPML2)
         cls.feedlist3 = from_opml_file(OPML3)
-
-    def assertFeedTitlesAre(self, feedlist: FeedList, feeds: Sequence):
-        """Assert that the titles of the feeds in ``feedlist`` are as
-         set out in ``feeds``.
-
-         """
-        feednames = [f.title for f in feedlist]
-        self.assertSequenceEqual(feednames, feeds)
-
-    def assertCategoriesAre(self, feedlist: FeedList, categories: Sequence):
-        """Assert that the categories in ``feedlist`` are as set out in
-        ``feeds``.
-
-         """
-        self.assertSequenceEqual(feedlist.category_names, categories)
 
     def test_01_load(self):
         """Test that the OPML files have been loaded successfully."""
@@ -95,7 +82,6 @@ class FeedListTestCase(unittest.TestCase):
                                         'CBS Moneywatch', 'Above the Law', 'The Biglaw Investor',
                                         'mapmyrun blog - Running', 'Runtastic', 'CBS News'])
 
-
     def test_04_del_feed(self):
         """Test deletion of feeds."""
         copy = self.feedlist1.copy()
@@ -114,6 +100,7 @@ class FeedListTestCase(unittest.TestCase):
         self.assertCategoriesAre(copy, [None, 'Economics', 'Law'])
         self.assertFeedTitlesAre(copy, ['Bank Underground', 'Musings on Markets', 'CLS Blue Sky Blog', 'Credit Slips',
                                         'Above the Law', 'The Biglaw Investor'])
+
 
 if __name__ == '__main__':
     unittest.main()

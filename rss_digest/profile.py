@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import shutil
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -138,3 +140,18 @@ class Profile:
         """
         feedlist = self.feedlist
         return feedlist.remove_feeds(feed_title, feed_url, category)
+
+    def set_opml_file(self, fpath: str, sync: bool = True):
+        """Set the OPML file for the profile, replacing the existing one
+        if it exists.
+
+        :param fpath: The path to the new OPML file.
+        :param sync: If True, automatically reload the profile's
+            :class:`FeedList` object and sync the profile's ``reader``
+            with it.
+
+        """
+        shutil.copy(fpath, self.config.opml_file)
+        self._feedlist = None
+        if sync:
+            self.sync_reader()
