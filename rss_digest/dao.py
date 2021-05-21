@@ -13,7 +13,8 @@ class ProfilesDAO:
 
     CREATE_TABLE = """CREATE TABLE IF NOT EXISTS profiles (
         profile_name TEXT PRIMARY KEY,
-        email TEXT NOT NULL,
+        email TEXT,
+        file TEXT,
         user_name TEXT
     )"""
 

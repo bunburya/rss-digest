@@ -5,8 +5,12 @@ import shutil
 import unittest
 from typing import Sequence
 
+import logging
+
 from rss_digest.config import AppConfig
 from rss_digest.feedlist import FeedList
+
+logging.getLogger().setLevel(logging.DEBUG)
 
 TEST_DATA_BASE = 'test_data'
 TEST_DIR_BASE = os.path.join(TEST_DATA_BASE, 'run')

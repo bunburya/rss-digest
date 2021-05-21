@@ -52,7 +52,7 @@ class HTMLGenerator:
     def __init__(self, app):
         logging.info('Initialising HTMLGenerator.')
         self.app = app
-        self.global_config = app.config
+        self.global_config = app._config
         self.template_loader = TemplateLoader(self.global_config.template_dir)
         self.jinja_env = Environment(
             loader=self.template_loader,
@@ -101,7 +101,7 @@ class HTMLGenerator:
             'gen_time': gen_time,
             'new_entries_total': feed_handler.new_entries_total,
             'updated_feeds_count': len(feed_handler.updated_feeds),
-            'subscribed_feeds_count': len(feed_handler.feeds),
+            'subscribed_feeds_count': len(feed_handler.categories),
             'new_entries_count': feed_handler.new_entries_count,
             'get_author': feed_handler.get_author,
             'get_date': lambda e: feed_handler.get_entry_date(e,

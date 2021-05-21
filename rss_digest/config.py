@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 from json import dump, load
@@ -82,6 +83,10 @@ class BaseConfig:
         # Only load output.ini when we need it (as it could contain sensitive information)
         self._output_config: Optional[ConfigParser] = None
 
+        logging.debug(f'{self.__class__.__name__} initialised.')
+        logging.debug(f'Main config file: {self.main_config_file}')
+        logging.debug(f'Output config file: {self.output_config_file}')
+
     @property
     def output_config(self) -> ConfigParser:
         if self._output_config is None:
@@ -102,10 +107,14 @@ class BaseConfig:
         :return: The requested value, as the correct datatype.
 
         """
-        raw_val = conf[section].get(key, None)
+        logging.debug(f'Searching for config option "{key}" in section "{section}".')
+        raw_val = conf.get(section, key, fallback=None)
         if raw_val is not None:
-            to_type = types[raw_val]
+            to_type = types[key]
+            logging.debug(f'Found value "{raw_val}"; converting to {to_type}.')
             raw_val = to_type(raw_val)
+        else:
+            logging.debug('Value not found!')
         return raw_val
 
     def get_main_config_value(self, key: str) -> Any:
@@ -240,9 +249,13 @@ class ProfileConfig(BaseConfig):
         :return: The specified value, as the correct datatype.
 
         """
+        logging.debug(f'Getting main config value "{key}" for profile "{self.profile_name}".')
         val = super().get_main_config_value(key)
         if val is None:
+            logging.debug('Not found in profile config; searching app config.')
             val = self.app_config.get_main_config_value(key)
+        else:
+            logging.debug(f'Value is "{val}".')
         return val
 
     def get_output_config_value(self, section: str, key: str) -> Any:
