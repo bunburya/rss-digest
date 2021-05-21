@@ -28,12 +28,17 @@ class ProfilesTestCase(RSSDigestTestCaseBase):
                                                           'Bank Underground', 'Musings on Markets', 'CLS Blue Sky Blog',
                                                           'Credit Slips', 'Above the Law', 'The Biglaw Investor',
                                                           'mapmyrun blog - Running', 'Runtastic'])
-        self.assertEqual(self.profile1.config.get_main_config_value('output'), 'stdout')
+        self.assertEqual(self.profile1.config.get_main_config_value('output_method'), 'stdout')
 
     def test_02_add_remove(self):
         """Test adding and removing profiles."""
 
+        # Add a profile that already exists
         self.assertRaises(ProfileExistsError, lambda: self.rss_digest.add_profile('Test Profile 1'))
+
+        profile2 = self.rss_digest.add_profile('Test Profile 2')
+        self.assertSequenceEqual(profile2.feedlist.category_names, [None])
+
 
 
 

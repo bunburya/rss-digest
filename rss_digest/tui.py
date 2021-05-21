@@ -8,7 +8,7 @@ class TUInterface:
     def __init__(self, app):
         self.app = app
         print('Welcome to RSS Digest.')
-        if not exists(self.app.config.email_data_file):
+        if not exists(self.app._config.email_data_file):
             print('No email.json file found.  Add details of how RSS Digest is to send emails.')
             self.set_email_data()
         self.repl()
@@ -41,7 +41,7 @@ class TUInterface:
             'username': username,
             'password': password
             }
-        self.app.config.save_email_data(data)
+        self.app._config.save_email_data(data)
         
     def add_feed(self, profile=None):
         if profile is None:

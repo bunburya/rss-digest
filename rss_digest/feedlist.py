@@ -7,6 +7,7 @@ import logging
 import os
 
 from collections import OrderedDict
+from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from email.utils import parsedate_to_datetime, format_datetime
@@ -164,23 +165,25 @@ class FeedCategory:
     def __bool__(self) -> bool:
         return bool(self.feeds)
 
+def _category_dict_factory():
+    return OrderedDict(((None, []),))
 
 @dataclass
 class FeedList:
     """A representation of a list of feeds (optionally sorted into categories)."""
 
-    feeds: OrderedDictType[Optional[str], FeedCategory]
+    categories: OrderedDictType[Optional[str], FeedCategory] = field(default_factory=_category_dict_factory)
     title: Optional[str] = None
     date_modified: Optional[datetime] = None
     opml_file: Optional[str] = None
 
     def add_category(self, name: str, overwrite: bool = False):
-        if name in self.feeds and not overwrite:
+        if name in self.categories and not overwrite:
             raise CategoryExistsError(f'Category with name "{name}" already exists.')
-        self.feeds[name] = FeedCategory(name)
+        self.categories[name] = FeedCategory(name)
 
     def remove_category(self, name: str):
-        self.feeds.pop(name)
+        self.categories.pop(name)
 
     def add_feed(self, xml_url: str, feed_name: str, category: Optional[str] = None):
         """Add a feed to the given category.
@@ -191,9 +194,9 @@ class FeedList:
             category does not already exist, it will be created.
 
         """
-        if not category in self.feeds:
+        if not category in self.categories:
             self.add_category(category)
-        self.feeds[category].add_feed(Feed(xml_url, feed_name, category))
+        self.categories[category].add_feed(Feed(xml_url, feed_name, category))
 
     def remove_feeds(self, feed_url: Optional[str] = WILDCARD, feed_title: Optional[str] = WILDCARD,
                      category: Optional[str] = WILDCARD) -> int:
@@ -211,13 +214,13 @@ class FeedList:
         if category is not WILDCARD:
             to_search = [category]
         else:
-            to_search = self.feeds
+            to_search = self.categories
         removed = 0
         for category in to_search:
             #logging.debug(f'Removing matching feeds from {category}.')
-            removed += self.feeds[category].remove_feeds(query)
+            removed += self.categories[category].remove_feeds(query)
             #logging.debug(f'Size of category is not {len(self.feeds[category])}')
-            if (not self.feeds[category]) and (category is not None):
+            if (not self.categories[category]) and (category is not None):
                 logging.debug(f'Category "{category}" is empty; removing.')
                 empty_categories.append(category)
         logging.debug(f'Removed {removed} feeds.')
@@ -227,16 +230,13 @@ class FeedList:
         return removed
 
     @property
-    def category_names(self) -> List[str]:
-        return list(self.feeds.keys())
-
-    def categories(self) -> List[FeedCategory]:
-        return list(self.feeds.values())
+    def category_names(self) -> List[Optional[str]]:
+        return list(self.categories.keys())
 
     def copy(self) -> FeedList:
         """Return a deepcopy of this instance."""
         return FeedList(
-            feeds=OrderedDict((name, self.feeds[name].copy()) for name in self.feeds),
+            categories=deepcopy(self.categories),
             title=self.title,
             date_modified=None,
             opml_file=self.opml_file
@@ -244,8 +244,8 @@ class FeedList:
 
     def __iter__(self):
         """Iterate through a flattened list of :class:`Feed` objects."""
-        for category in self.feeds:
-            for feed in self.feeds[category]:
+        for category in self.categories:
+            for feed in self.categories[category]:
                 yield feed
 
     def to_opml(self) -> Element:
@@ -270,12 +270,12 @@ class FeedList:
             date_modified.text = format_datetime(self.date_modified)
             head.append(date_modified)
 
-        for category_name in self.feeds:
+        for category_name in self.categories:
             if category_name is None:
-                for feed in self.feeds[category_name]:
+                for feed in self.categories[category_name]:
                     body.append(feed.to_opml())
             else:
-                body.append(self.feeds[category_name].to_opml())
+                body.append(self.categories[category_name].to_opml())
 
         return opml
 
@@ -294,8 +294,8 @@ def from_opml(elem: Element, **kwargs) -> FeedList:
 
     """
 
-    feeds = OrderedDict()
-    feeds[None] = FeedCategory(None)
+    categories = OrderedDict()
+    categories[None] = FeedCategory(None)
 
     head = elem.find('head')
     if head is not None:
@@ -322,16 +322,16 @@ def from_opml(elem: Element, **kwargs) -> FeedList:
         if outline_type == 'category':
             category = FeedCategory.from_opml(child)
             name = category.name
-            if name in feeds:
-                feeds[name].extend(category)
+            if name in categories:
+                categories[name].extend(category)
             else:
-                feeds[name] = category
+                categories[name] = category
         elif outline_type == 'rss':
-            feeds[None].add_feed(Feed.from_opml(child))
+            categories[None].add_feed(Feed.from_opml(child))
         else:
             logging.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
 
-    return FeedList(feeds=feeds, title=title, date_modified=date_modified, **kwargs)
+    return FeedList(categories=categories, title=title, date_modified=date_modified, **kwargs)
 
 def from_opml_file(fpath: str) -> FeedList:
     """Create a :class:`FeedList` object from an OPML file. If the
@@ -352,3 +352,4 @@ def from_opml_file(fpath: str) -> FeedList:
     # here; lxml throws an OSError.
     except (FileNotFoundError, OSError):
         logging.info(f'OPML file not found at "{fpath}"; new file will be created on save.')
+        return FeedList()
