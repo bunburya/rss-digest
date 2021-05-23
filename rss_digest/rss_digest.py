@@ -6,22 +6,24 @@ from __future__ import annotations
 import logging
 import shutil
 import os
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict
 
 from rss_digest.config import AppConfig
 from rss_digest.exceptions import ProfileExistsError, ProfileNotFoundError
 from rss_digest.feedlist import WILDCARD
+from rss_digest.model_utils import config_context_from_configs, feed_result_from_reader, feed_result_from_url, \
+    entry_result_from_reader, category_result_from_dict
+from rss_digest.models import ConfigContext, Context
 from rss_digest.profile import Profile
 
 
 class RSSDigest:
-
     """This class kind of sits in the middle and ties everything
     together, and is mainly here so that different UIs have a consistent
     interface to interact with.
 
     """
-    
+
     def __init__(self, config: AppConfig):
         self.config = config
 
@@ -31,7 +33,7 @@ class RSSDigest:
 
     def profile_exists(self, name: str) -> bool:
         return os.path.exists(self.config.get_profile_config_dir(name))
-    
+
     def add_profile(self, name: str) -> Profile:
         """Create a new profile.
 
@@ -44,6 +46,11 @@ class RSSDigest:
         return Profile(name, self.config.get_profile_config(name))
 
     def delete_profile(self, profile_name: str):
+        """Permanently delete a profile, together with all associated
+        configuration and state files.
+
+        """
+
         shutil.rmtree(self.config.get_profile_config_dir(profile_name))
         shutil.rmtree(self.config.get_profile_data_dir(profile_name))
 
@@ -53,12 +60,12 @@ class RSSDigest:
         else:
             raise ProfileNotFoundError(f'Profile "{name}" does not exist.')
 
-    def add_feed(self, profile: str, feed_url: str, feed_title: str, category: Optional[str] = None,
+    def add_feed(self, profile_name: str, feed_url: str, feed_title: str, category: Optional[str] = None,
                  test_feed: bool = False, mark_read: bool = False, fetch_title: bool = False,
                  write: bool = True):
         """Add a feed to the :class:`FeedList`.
 
-        :param profile: The name of the profile to act upon.
+        :param profile_name: The name of the profile to act upon.
         :param feed_url: The URL of the feed.
         :param feed_title: The title of the feed.
         :param category: The category to which the feed belongs.
@@ -74,20 +81,93 @@ class RSSDigest:
             file upon adding the feed.
 
         """
-        return self.get_profile(profile).add_feed(feed_url, feed_title, category, test_feed, mark_read, fetch_title,
-                                                  write)
+        return self.get_profile(profile_name).add_feed(feed_url, feed_title, category, test_feed, mark_read,
+                                                       fetch_title,
+                                                       write)
 
-    def delete_feeds(self, profile: str, feed_url: Optional[str] = WILDCARD, feed_title: Optional[str] = WILDCARD,
+    def delete_feeds(self, profile_name: str, feed_url: Optional[str] = WILDCARD, feed_title: Optional[str] = WILDCARD,
                      category: Optional[str] = WILDCARD) -> int:
         """Delete all feeds for the given profile and matching the given
         title, URL and category.
 
-        :param profile: The profile to delete the feeds from.
+        :param profile_name: The profile to delete the feeds from.
         :param feed_title: Title of feed to remove.
         :param feed_url: URL of feed to remove.
         :param category: Category of feed to remove.
         :return: The total number of feeds removed.
 
         """
-        return self.get_profile(profile).delete_feeds(feed_url, feed_title, category)
+        return self.get_profile(profile_name).delete_feeds(feed_url, feed_title, category)
 
+    def update_feeds(self, profile_name: str) -> Tuple[List[str], List[str]]:
+        """Update all feeds for a given profile.
+
+        :return: A tuple of two lists, the first of which is the list
+            of urls of feeds that have been updated and the second of
+            which is a list of URLs of feeds for which an error was
+            received when updating."""
+
+        return self.get_profile(profile_name).update_feeds()
+
+    def get_config_context(self, profile_name: str) -> ConfigContext:
+        """Get a ConfigContext object that can be used to generate
+        output.
+
+        :param profile_name: The name of the profile whose configuration
+            should be used.
+
+        """
+
+        return config_context_from_configs(
+            self.config,
+            self.get_profile(profile_name).config
+        )
+
+    def update_and_get_context(self, profile_name: str) -> Context:
+        """Perform an update for the given profile, and generate a
+        Context object which can be used to generate the output to be
+        sent to the user.
+
+        :param profile_name: The name of the profile to be updated.
+
+        """
+
+        profile = self.get_profile(profile_name)
+        reader = profile.reader
+        feedlist = profile.feedlist
+        local_tz = profile.local_timezone
+        last_updated_utc = profile.last_updated
+        last_updated_local = last_updated_utc.astimezone(local_tz) if last_updated_utc is not None else None
+        updated, errors = self.update_feeds(profile_name)
+        updated_utc = profile.last_updated
+        updated_local = updated_utc.astimezone(local_tz)
+
+        unread = profile.get_unread_entries()
+
+        updated_feeds = [feed_result_from_url(
+            url, reader, feedlist, [entry_result_from_reader(e) for e in unread[url]]
+        ) for url in updated]
+
+        sorted_by_category = feedlist.sort_by_category(updated)
+
+        updated_categories = []
+        for c in feedlist.categories:
+            if c in sorted_by_category:
+                updated_categories.append(category_result_from_dict(
+                    {f.url: f for f in updated_feeds if f.url in sorted_by_category[c]},
+                    feedlist.categories[c]
+                ))
+
+        error_feeds = [feed_result_from_url(url, reader, feedlist, []) for url in errors]
+
+        return Context(
+            profile_name=profile_name,
+            update_time_utc=updated_utc,
+            update_time_local=updated_local,
+            last_update_utc=last_updated_utc,
+            last_update_local=last_updated_local,
+            updated_feeds=updated_feeds,
+            updated_categories=updated_categories,
+            error_feeds=error_feeds,
+            config=self.get_config_context(profile_name),
+        )

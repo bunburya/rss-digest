@@ -11,7 +11,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from email.utils import parsedate_to_datetime, format_datetime
-from typing import Optional, List, OrderedDict as OrderedDictType, Any, Union
+from typing import Optional, List, OrderedDict as OrderedDictType, Any, Union, Dict
 
 from rss_digest.exceptions import BadOPMLError, CategoryExistsError, FeedExistsError
 
@@ -177,6 +177,14 @@ class FeedList:
     date_modified: Optional[datetime] = None
     opml_file: Optional[str] = None
 
+    _urls: Dict[str, Feed] = field(default_factory=dict)
+
+    def __post_init__(self):
+        for c in self.categories:
+            for f in self.categories[c].feeds:
+                self._urls[f.xml_url] = f
+
+
     def add_category(self, name: str, overwrite: bool = False):
         if name in self.categories and not overwrite:
             raise CategoryExistsError(f'Category with name "{name}" already exists.')
@@ -231,6 +239,7 @@ class FeedList:
 
     @property
     def category_names(self) -> List[Optional[str]]:
+        """Names of all categories, in order."""
         return list(self.categories.keys())
 
     def copy(self) -> FeedList:
@@ -282,6 +291,26 @@ class FeedList:
     def to_opml_file(self, fpath: Optional[str] = None):
         etree = ElementTree(self.to_opml())
         etree.write(fpath or self.opml_file)
+
+    def get_feed_by_url(self, url: str) -> Feed:
+        return self._urls[url]
+
+    def sort_by_category(self, urls: List[str]) -> OrderedDict[str, List[str]]:
+        """Arrange a list of URLs by category.
+
+        :param urls: A list of URLs to sort.
+        :return: A dict mapping category names to lists of URLs.
+
+        """
+        categories = OrderedDict()
+        for url in urls:
+            feed = self.get_feed_by_url(url)
+            c = feed.category
+            if c in categories:
+                categories[c].append(url)
+            else:
+                categories[c] = [url]
+        return categories
 
 
 def from_opml(elem: Element, **kwargs) -> FeedList:

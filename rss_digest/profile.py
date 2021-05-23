@@ -5,18 +5,20 @@ import os
 import shutil
 
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone, tzinfo
+from typing import Optional, List, Tuple, Dict, Iterable
 
-from reader import Reader, make_reader, FeedExistsError as reader_FeedExistsError, ParseError
+from reader import Reader, make_reader, FeedExistsError as reader_FeedExistsError, ParseError, ReaderError, UpdatedFeed, \
+    Entry
 from rss_digest.config import ProfileConfig
 from rss_digest.exceptions import FeedExistsError, FeedError
 from rss_digest.feedlist import FeedList, from_opml_file, WILDCARD
+from rss_digest.model_utils import entry_result_from_reader, feed_result_from_reader, category_result_from_dict
+from rss_digest.models import Context, CategoryResult, FeedResult
 
 
 @dataclass
 class Profile:
-
     name: str
     config: ProfileConfig
 
@@ -32,7 +34,7 @@ class Profile:
 
     @property
     def reader(self) -> Reader:
-        """Return a ``reader.Reader`` object for the profile.
+        """Return a :class:`reader.Reader` object for the profile.
 
         NOTE: This does not automatically sync the reader with the OPML
         file. Use the ``sync_reader`` method for that.
@@ -43,18 +45,29 @@ class Profile:
         return self._reader
 
     @property
-    def last_updated(self) -> datetime:
+    def last_updated(self) -> Optional[datetime]:
         """Return the date and time at which a profile's feeds were
-        last updated (ie, fetched), in UTC.
+        last updated (ie, fetched), in UTC. If no updated has been
+        performed, return None.
 
         """
-        with open(self.config.last_updated_file) as f:
-            return datetime.fromisoformat(f.read())
+        try:
+            with open(self.config.last_updated_file) as f:
+                dt = datetime.fromisoformat(f.read())
+            if dt.tzinfo is None:
+                dt = dt.astimezone(timezone.utc)
+            return dt
+        except FileNotFoundError:
+            return None
 
     @last_updated.setter
     def last_updated(self, dt: datetime):
         with open(self.config.last_updated_file, 'w') as f:
-            f.write(dt.isoformat())
+            f.write(dt.astimezone(timezone.utc).isoformat())
+
+    @property
+    def local_timezone(self) -> tzinfo:
+        return timezone(self.config.get_main_config_value('timezone'))
 
     def sync_reader(self) -> Reader:
         """Sync the profile's :class:`reader.Reader` to its OPML file
@@ -155,3 +168,87 @@ class Profile:
         self._feedlist = None
         if sync:
             self.sync_reader()
+
+    def update_feeds(self) -> Tuple[List[str], List[str]]:
+        """Update all feeds for this profile.
+
+        :return: A tuple of two lists, the first of which is the list
+            of urls of feeds that have been updated and the second of
+            which is a list of URLs of feeds for which an error was
+            received when updating.
+
+        """
+
+        updated_urls = []
+        error_urls = []
+        for (url, value) in self.reader.update_feeds_iter():
+            if isinstance(value, UpdatedFeed):
+                logging.info(f'Got updated feed for {url}')
+                updated_urls.append(url)
+            elif isinstance(value, ReaderError):
+                logging.error(f'Got error when updating {url}')
+                error_urls.append(url)
+        self.last_updated = datetime.utcnow()
+        return updated_urls, error_urls
+
+    def get_unread_entries(self, mark_read: bool = False) -> Dict[str, List[Entry]]:
+        """Get all unread entries for this profile.
+
+        :param mark_read: Whether to mark each entry as read.
+        :return: A dict mapping feed URLs to lists of unread entries.
+
+        """
+        reader = self.reader
+        entry_list = reader.get_entries(read=False)
+        entries = {}
+        for e in entry_list:
+            url = e.feed_url
+            if url in entries:
+                entries[url].append(e)
+            else:
+                entries[url] = [e]
+            if mark_read:
+                reader.mark_as_read(e)
+        return entries
+
+    def mark_read(self, entries: List[Entry]):
+        for e in entries:
+            self.reader.mark_as_read(e)
+
+    def get_category_results(self, mark_read: bool) -> List[CategoryResult]:
+        """Get new entries, and use them to build a list of
+        :class:`CategoryResult` objects that can be used to generate
+        the output.
+
+        :param mark_read: Whether to mark all new entries as read as we
+            retrieve them. We probably don't normally don't want to do
+            this, as it's better to wait until we have successfully
+            generated (and preferably sent) the output.
+        :return: A list of :class:`CategoryResult` objects, each of
+            which corresponds to a user-defined category (or no
+            category) and contains updated feeds belonging to that
+            category.
+
+        """
+
+        unread = self.get_unread_entries(mark_read)
+        # A dict mapping category names to dicts. Each key dict is a mapping of feed URLs to FeedResult objects.
+        category_feed_results: Dict[str, Dict[str, FeedResult]] = {}
+        for url in unread:
+            entries = [entry_result_from_reader(e) for e in unread[url]]
+            reader_feed = self.reader.get_feed(url)
+            category = self.feedlist.get_feed_by_url(url).category
+            if category in category_feed_results:
+                category_feed_results[category][url] = feed_result_from_reader(reader_feed, category, entries)
+            else:
+                category_feed_results[category] = {url: feed_result_from_reader(reader_feed, category, entries)}
+        category_results = []
+        for c in self.feedlist.categories:
+            if c in category_feed_results:
+                category_results.append(category_result_from_dict(
+                    category_feed_results[c],
+                    self.feedlist.categories[c]
+                ))
+        return category_results
+
+
