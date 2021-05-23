@@ -1,9 +1,9 @@
 ## TODO
 
 - Save state using `sqlite3`
-- User `appdirs` to determine correct data dirs
+- Use `appdirs` to determine correct data dirs
 - Replace feed handling with `reader`
-- User `configparser` to take command line args
+- Use `configparser` to take command line args
 - SSL / OAuth for email
 
 ## CLI

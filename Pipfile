@@ -11,6 +11,8 @@ lxml = "*"
 lxml-stubs = "*"
 pytest = "*"
 requests = "*"
+sphinx = "*"
+pytz = "*"
 
 [dev-packages]
 pytest = "*"
