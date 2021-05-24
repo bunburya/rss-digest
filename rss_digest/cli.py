@@ -116,7 +116,12 @@ class CLI:
         each feed and generating a digest.
 
         """
-        pass
+        self._app.run(
+            profile_name=args.profile_name,
+            mark_read=not args.forget,
+            method=args.output_method,
+            format=args.output_format
+        )
 
 
 def get_arg_parser(cli: CLI) -> argparse.ArgumentParser:
@@ -187,10 +192,15 @@ def get_arg_parser(cli: CLI) -> argparse.ArgumentParser:
 
     run_parser = subparsers.add_parser('run', description=f'Run {APP_NAME}.')
     run_parser.add_argument('profile_name', metavar='profile-name', help='Name of profile to run.')
-    run_parser.add_argument('output_format', metavar='output-format', default='text',
-                            help='Output format for digest. Defaults to "text".')
-    run_parser.add_argument('output_method', metavar='output-method', choices=OUTPUT_METHODS, default='stdout',
-                            help=f'How {APP_NAME} should send the generated digest. Defaults to "stdout".')
+    run_parser.add_argument('--output_format', metavar='FORMAT',
+                            help='Output format for digest. If not provided, configured default is used.')
+    run_parser.add_argument('--output_method', metavar='METHOD', choices=OUTPUT_METHODS,
+                            help=f'How {APP_NAME} should send the generated digest. If not provided, the configured'
+                                 f'default is used.')
+    run_parser.add_argument('--forget', action='store_true',
+                            help=f'If provided, {APP_NAME} will "forget" sending the digest, which means that, while'
+                                 f'the new entries will be fetched and saved, they will not be marked as read after'
+                                 f'sending.')
     run_parser.set_defaults(func=cli.run)
 
     return parser

@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import logging
-import os
 import shutil
 
 from dataclasses import dataclass
 from datetime import datetime, timezone, tzinfo
-from typing import Optional, List, Tuple, Dict, Iterable
+from typing import Optional, List, Tuple, Dict
 
+import pytz
 from reader import Reader, make_reader, FeedExistsError as reader_FeedExistsError, ParseError, ReaderError, UpdatedFeed, \
     Entry
 from rss_digest.config import ProfileConfig
 from rss_digest.exceptions import FeedExistsError, FeedError
 from rss_digest.feedlist import FeedList, from_opml_file, WILDCARD
 from rss_digest.model_utils import entry_result_from_reader, feed_result_from_reader, category_result_from_dict
-from rss_digest.models import Context, CategoryResult, FeedResult
+from rss_digest.models import CategoryResult, FeedResult
 
 
 @dataclass
@@ -67,7 +67,7 @@ class Profile:
 
     @property
     def local_timezone(self) -> tzinfo:
-        return timezone(self.config.get_main_config_value('timezone'))
+        return pytz.timezone(self.config.get_main_config_value('timezone'))
 
     def sync_reader(self) -> Reader:
         """Sync the profile's :class:`reader.Reader` to its OPML file
@@ -181,6 +181,7 @@ class Profile:
 
         updated_urls = []
         error_urls = []
+        self.sync_reader()
         for (url, value) in self.reader.update_feeds_iter():
             if isinstance(value, UpdatedFeed):
                 logging.info(f'Got updated feed for {url}')
@@ -211,7 +212,16 @@ class Profile:
                 reader.mark_as_read(e)
         return entries
 
-    def mark_read(self, entries: List[Entry]):
+    def mark_read(self, entries: Optional[List[Entry]] = None):
+        """Mark entries as read.
+
+        :param entries: List of entries to mark as read. If not provided,
+            all unread entries will be marked as read.
+
+        """
+
+        if entries is None:
+            entries = self.reader.get_entries(read=False)
         for e in entries:
             self.reader.mark_as_read(e)
 

@@ -3,6 +3,7 @@ import email.utils
 import logging
 import smtplib
 from email.mime.text import MIMEText
+from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 from rss_digest.config import AppConfig, ProfileConfig
@@ -85,9 +86,9 @@ class OutputSender:
         with open(fpath, 'w') as f:
             f.write(output)
 
-    def send(self, output: str, profile_config: ProfileConfig):
+    def send(self, output: str, profile_config: ProfileConfig, method: Optional[str] = None):
         """Send output using the method specified in the profile config."""
-        method = profile_config.get_main_config_value('output_method')
+        method = method or profile_config.get_main_config_value('output_method')
         if method == 'smtp':
             return self.send_smtp(output, profile_config)
         elif method == 'file':
