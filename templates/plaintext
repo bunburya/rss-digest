@@ -1,15 +1,26 @@
-{# Plain text output template for rss-digest -#}
-{# Note: Because this is plaintext, newlines and indentation will be rendered faithfully. -#}
-{% extends "_base.jinja2" -%}
-{% import '_plaintext_macros.jinja2' as m with context -%}
-{% block entries -%}
-{% if ctx.has_categories -%}
-{% for c in ctx.updated_categories -%}
-{{ m.display_category(c, '', '  ', '    ') -}}
-{% endfor -%}
-{% else -%}
-{% for f in context.visible_updated_feeds %}
-{{ m.display_feed(f, '  ', '    ') }}
-{% endfor -%}
-{% endif -%}
-{% endblock -%}
+{% extends "_base.jinja2" %}
+{% block entries %}
+{% if context.has_categories %}
+  {% for c in context.updated_categories %}Category: {{ c.name }}
+
+    {% for f in c.feed %}{{ f.name }}
+
+      {% for e in f.entries %}
+
+      {{ e.title }} (by {{ e.author }} on {{ context.local_format(e.published_utc) }}
+
+      {% endfor %}
+    {% endfor %}
+  {% endfor %}
+{% else %}
+  {% for f in context.updated_feeds %}{{ f.name }}
+
+    {% for e in f.entries %}
+
+    {{ e.title }} (by {{ e.author }} on {{ context.local_format(e.published_utc) }}
+
+    {% endfor %}
+  {% endfor %}
+{% endif %}
+
+{% endblock %}

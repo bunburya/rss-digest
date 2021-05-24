@@ -4,12 +4,13 @@ working with the data classes defined in models.py.
 """
 from typing import List, Optional, Dict
 
+from pytz import timezone
 from reader import Reader
 
 import reader
 from rss_digest.config import AppConfig, ProfileConfig
 from rss_digest.feedlist import FeedCategory, FeedList
-from rss_digest.models import FeedResult, CategoryResult, ConfigContext, EntryResult, ContentResult
+from rss_digest.models import FeedResult, CategoryResult, ConfigContext, EntryResult, ContentResult, DateTimeHelper
 
 
 def content_result_from_reader(content: reader.types.Content) -> ContentResult:
@@ -34,10 +35,10 @@ def entry_result_from_reader(entry: reader.types.Entry) -> EntryResult:
         title=entry.title,
         link=entry.link,
         author=entry.author,
-        published=entry.published,
+        published_utc=entry.published,
         summary=entry.summary,
         content=[content_result_from_reader(c) for c in entry.content],
-        last_updated=entry.last_updated
+        last_updated_utc=entry.last_updated
     )
 
 
@@ -51,11 +52,11 @@ def feed_result_from_reader(feed: reader.types.Feed, category: Optional[str],
         entries=entries,
         category=category,
         url=feed.url,
-        updated=feed.updated,
+        updated_utc=feed.updated,
         title=feed.title,
         link=feed.link,
         author=feed.author,
-        last_retrieved=feed.last_updated
+        last_retrieved_utc=feed.last_updated
     )
 
 def feed_result_from_url(url: str, reader: Reader, feedlist: FeedList, entries: List[EntryResult]) -> FeedResult:
@@ -105,3 +106,14 @@ def config_context_from_configs(app_config: AppConfig, profile_config: ProfileCo
         profile_config.get_main_config_value('max_displayed_entries'),
         profile_config.get_main_config_value('max_displayed_feeds'),
     )
+
+def datetime_helper_from_config(profile_config: ProfileConfig) -> DateTimeHelper:
+    """Generate a :class:`DateTimeHelper` object from a
+    :class:`ProfileConfig` object.
+
+    """
+    return DateTimeHelper(
+        profile_config.get_main_config_value('datetime_format'),
+        timezone(profile_config.get_main_config_value('timezone'))
+    )
+

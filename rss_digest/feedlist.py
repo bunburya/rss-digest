@@ -312,6 +312,11 @@ class FeedList:
                 categories[c] = [url]
         return categories
 
+    @property
+    def feeds(self) -> List[Feed]:
+        """A list of all feeds."""
+        return sum([c.feeds for c in self.categories.values()], start=[])
+
 
 def from_opml(elem: Element, **kwargs) -> FeedList:
     """Generate a :class:`FeedList` instance from an XML ``opml`` element.

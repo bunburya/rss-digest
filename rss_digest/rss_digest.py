@@ -12,8 +12,9 @@ from rss_digest.config import AppConfig
 from rss_digest.exceptions import ProfileExistsError, ProfileNotFoundError
 from rss_digest.feedlist import WILDCARD
 from rss_digest.model_utils import config_context_from_configs, feed_result_from_reader, feed_result_from_url, \
-    entry_result_from_reader, category_result_from_dict
+    entry_result_from_reader, category_result_from_dict, datetime_helper_from_config
 from rss_digest.models import ConfigContext, Context
+from rss_digest.output import OutputGenerator, OutputSender
 from rss_digest.profile import Profile
 
 
@@ -26,6 +27,8 @@ class RSSDigest:
 
     def __init__(self, config: AppConfig):
         self.config = config
+        self._output_generator = OutputGenerator(config)
+        self._output_sender = OutputSender(config)
 
     @property
     def profiles(self) -> List[str]:
@@ -123,7 +126,7 @@ class RSSDigest:
             self.get_profile(profile_name).config
         )
 
-    def update_and_get_context(self, profile_name: str) -> Context:
+    def update_and_get_context(self, profile: Profile) -> Context:
         """Perform an update for the given profile, and generate a
         Context object which can be used to generate the output to be
         sent to the user.
@@ -132,24 +135,20 @@ class RSSDigest:
 
         """
 
-        profile = self.get_profile(profile_name)
+        profile_config = profile.config
+        app_config = self.config
         reader = profile.reader
         feedlist = profile.feedlist
         local_tz = profile.local_timezone
         last_updated_utc = profile.last_updated
-        last_updated_local = last_updated_utc.astimezone(local_tz) if last_updated_utc is not None else None
-        updated, errors = self.update_feeds(profile_name)
+        updated, errors = self.update_feeds(profile.name)
         updated_utc = profile.last_updated
-        updated_local = updated_utc.astimezone(local_tz)
 
         unread = profile.get_unread_entries()
-
         updated_feeds = [feed_result_from_url(
             url, reader, feedlist, [entry_result_from_reader(e) for e in unread[url]]
         ) for url in updated]
-
         sorted_by_category = feedlist.sort_by_category(updated)
-
         updated_categories = []
         for c in feedlist.categories:
             if c in sorted_by_category:
@@ -157,17 +156,32 @@ class RSSDigest:
                     {f.url: f for f in updated_feeds if f.url in sorted_by_category[c]},
                     feedlist.categories[c]
                 ))
-
         error_feeds = [feed_result_from_url(url, reader, feedlist, []) for url in errors]
 
         return Context(
-            profile_name=profile_name,
+            profile_name=profile.name,
             update_time_utc=updated_utc,
-            update_time_local=updated_local,
             last_update_utc=last_updated_utc,
-            last_update_local=last_updated_local,
             updated_feeds=updated_feeds,
             updated_categories=updated_categories,
             error_feeds=error_feeds,
-            config=self.get_config_context(profile_name),
+            config=config_context_from_configs(app_config, profile_config),
+            subscribed_feeds_count=len(feedlist.feeds),
+            datetime_helper=datetime_helper_from_config(profile_config)
         )
+
+    def run(self, profile_name: str, mark_read: bool = True):
+        """Get unread entries for a given profile and send in the
+        appropriate way.
+
+        :param profile_name: The name of the profile.
+        :param mark_read: Whether to mark entries as read once they are
+            sent.
+
+        """
+        profile = self.get_profile(profile_name)
+        context = self.update_and_get_context(profile)
+        profile_config = profile.config
+        template = profile_config.get_main_config_value('output_format')
+        output = self._output_generator.generate(template, context)
+        self._output_sender.send(output, profile_config)

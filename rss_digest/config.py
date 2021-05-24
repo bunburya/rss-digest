@@ -33,9 +33,12 @@ MAIN_CONFIG_TYPES = {
     'output_format': str,
     'output_method': str,
     'max_displayed_entries': int,
+    'max_displayed_feeds': int,
     'include_updated': bool,
     'date_format': str,
-    'time_format': str
+    'time_format': str,
+    'datetime_format': str,
+    'timezone': str
 }
 
 OUTPUT_CONFIG_TYPES = {

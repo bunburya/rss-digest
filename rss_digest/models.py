@@ -6,7 +6,7 @@ when generating output.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, tzinfo
 from typing import Optional, List
 
 @dataclass
@@ -18,23 +18,57 @@ class Context:
 
     profile_name: str  #: The name of the profile.
     update_time_utc: datetime  #: The date and time of this update in UTC.
-    update_time_local: Optional[datetime]  #: The date and time of this update in local time.
     last_update_utc: Optional[datetime]  #: The date and time of the last update in UTC, or None.
-    last_update_local: Optional[datetime]  #: The date and time of the last update in local time, or None.
     updated_feeds: List[FeedResult]  #: A list of Feed objects, containing feeds with new or updated entries.
     updated_categories: List[CategoryResult]  #: A list of Category objects, containing updated feeds.
     error_feeds: List[FeedResult]  #: A list of Feed objects, representing feeds for which an error was obtained.
     config: ConfigContext  #: A ConfigContext object with some information about how output should be displayed.
+    subscribed_feeds_count: int  #: How many feeds, in total, the profile is subscribed to.
+    datetime_helper: DateTimeHelper  #: A helper function for displaying and converting dates and times.
 
     @property
-    def updated_count(self) -> int:
+    def updated_feeds_count(self) -> int:
         """The number of updated feeds."""
         return len(self.updated_feeds)
+
+    @property
+    def updated_categories_count(self) -> int:
+        """The number of categories containing at least one updated
+        feed.
+
+        """
+        return len(self.updated_categories)
+
+    @property
+    def updated_entries_count(self) ->int:
+        """The total number of new or updated entries."""
+        return sum(f.entries_count for f in self.updated_feeds)
 
     @property
     def error_count(self) -> int:
         """The number of feeds that returned an error when updating."""
         return len(self.error_feeds)
+
+    @property
+    def non_updated_feeds_count(self) -> int:
+        """The number of subscribed feeds that have not been updated."""
+        return self.subscribed_feeds_count - self.updated_feeds_count
+
+    @property
+    def has_categories(self) -> bool:
+        """Whether at least one of the updated feeds belongs to a
+        category.
+
+        """
+        return (len(self.updated_categories) > 1) or (self.updated_categories[0].name is not None)
+
+    def local_format(self, dt: datetime) -> str:
+        """A "shortcut" to DateTimeHelper.local_formatted, to save
+        typing (as we're likely to use that function a lot in
+        templates).
+
+        """
+        return self.datetime_helper.local_formatted(dt)
 
 
 @dataclass
@@ -67,15 +101,15 @@ class FeedResult:
     entries: List[EntryResult]  #: A list of Entry objects representing the feed's new entries.
     category: Optional[str]  #: The category of the feed.
     url: Optional[str]  #: The URL of the feed.
-    updated: Optional[str]  #: When the feed was last updated.
+    updated_utc: Optional[datetime]  #: When the feed was last updated, or None.
     title: Optional[str]  #: The title of the feed.
     link: Optional[str]  #: The URL of a page associated with the entry.
     author: Optional[str]  #: The author of the feed.
     #user_title: Optional[str]  #: The user-defined title of the feed.
-    last_retrieved: Optional[str]  #: When the feed was last retrieved.
+    last_retrieved_utc: Optional[datetime]  #: When the feed was last retrieved, or None.
 
     @property
-    def entry_count(self) -> int:
+    def entries_count(self) -> int:
         """The number of entries present."""
         return len(self.entries)
 
@@ -90,15 +124,45 @@ class EntryResult:
     title: Optional[str]  #: The title of the feed.
     link: Optional[str]  #: A URL of a page associated with the entry.
     author: Optional[str]  #: The author of the entry.
-    published: Optional[datetime]  #: When the entry was originally published.
+    published_utc: Optional[datetime]  #: When the entry was originally published, in UTC.
     summary: Optional[str]  #: A summary of the entry.
     content: List[ContentResult]  #: The full content of the entry.
-    last_updated: Optional[datetime]  #: When the entry was last updated.
+    last_updated_utc: Optional[datetime]  #: When the entry was last updated, in UTC.
 
 @dataclass
 class ContentResult:
     """A data class representing a piece of content in an entry."""
 
-    value: str
-    type: Optional[str]
-    language: Optional[str]
+    value: str  #: The actual content.
+    type: Optional[str]  #: The type of the content.
+    language: Optional[str]  #: The language of the content.
+
+
+@dataclass
+class DateTimeHelper:
+    """A data class to store user preferences regarding handling of
+    dates and times, and some helper functions to convert and format
+    datetime objects.
+
+    """
+
+    format: str  #: The desired format for displaying datetime objects, as a string compatible with datetime.strftime.
+    local_timezone: tzinfo  #: The user's preferred local timezone.
+
+    def local(self, dt: Optional[datetime]) -> Optional[datetime]:
+        """Convert a :class:`datetime` object to the user's local
+        timezone.
+
+        """
+        return dt.astimezone(self.local_timezone) if dt is not None else None
+
+    def formatted(self, dt: datetime) -> str:
+        """Format a :class:`datetime` object as a string."""
+        return dt.strftime(self.format)
+
+    def local_formatted(self, dt: datetime) -> str:
+        """Convert a :class:`datetime` object to the user's local
+        timezone and format as a string.
+
+        """
+        return self.formatted(self.local(dt))
