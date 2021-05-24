@@ -84,9 +84,8 @@ class RSSDigest:
             file upon adding the feed.
 
         """
-        return self.get_profile(profile_name).add_feed(feed_url, feed_title, category, test_feed, mark_read,
-                                                       fetch_title,
-                                                       write)
+        profile = self.get_profile(profile_name)
+        return profile.add_feed(feed_url, feed_title, category, test_feed, mark_read, fetch_title, write)
 
     def delete_feeds(self, profile_name: str, feed_url: Optional[str] = WILDCARD, feed_title: Optional[str] = WILDCARD,
                      category: Optional[str] = WILDCARD) -> int:
@@ -170,18 +169,23 @@ class RSSDigest:
             datetime_helper=datetime_helper_from_config(profile_config)
         )
 
-    def run(self, profile_name: str, mark_read: bool = True):
+    def run(self, profile_name: str, mark_read: bool = True,
+            method: Optional[str] = None, format: Optional[str] = None):
         """Get unread entries for a given profile and send in the
         appropriate way.
 
         :param profile_name: The name of the profile.
         :param mark_read: Whether to mark entries as read once they are
             sent.
+        :param method: The method to use to send the digest.
+        :param format: How the output should be formatted.
 
         """
         profile = self.get_profile(profile_name)
         context = self.update_and_get_context(profile)
         profile_config = profile.config
-        template = profile_config.get_main_config_value('output_format')
+        template = format or profile_config.get_main_config_value('output_format')
         output = self._output_generator.generate(template, context)
-        self._output_sender.send(output, profile_config)
+        self._output_sender.send(output, profile_config, method)
+        if mark_read:
+            profile.mark_read()
