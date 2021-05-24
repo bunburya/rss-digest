@@ -1,0 +1,12 @@
+{% block intro %}
+Hi {{ context.config.profile_user_name or context.profile_name }},
+
+This is your RSS feed digest for {{ context.local_format(context.update_time_utc) }}.
+
+{% if context.last_update_utc is none %}There{% else %}Since your last update on {{ context.local_format(context.update_time_utc) }}, there{% endif %} ha{{ 's' if context.updated_feeds_count == 1 else 've' }} been {{ context.updated_entries_count }} new or updated post{{ 's' if context.updated_entries_count > 1 }} to {{ context.updated_feeds_count }} of your {{ context.subscribed_feeds_count }} subscribed feeds.
+{% endblock %}
+{% block entries %}{% endblock %}
+{% block epilogue %}
+{% if context.non_updated_feeds_count > 0 %}
+{{ context.non_updated_feeds_count }} feed{% if context.non_updated_feeds_count == 1 %} has{% else %}s have{% endif %} no new or updated posts since your last update.
+{% endblock %}
