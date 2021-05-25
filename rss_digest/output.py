@@ -7,20 +7,10 @@ from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 from rss_digest.config import AppConfig, ProfileConfig
+from rss_digest.exceptions import BadConfigurationError
 from rss_digest.models import Context
 from rss_digest.profile import Profile
 
-class OutputError(Exception):
-    """Base class for output-based exceptions."""
-    pass
-
-class BadConfigurationException(OutputError):
-    """The specified output method has not been configured properly."""
-    pass
-
-class BadMethodError(OutputError):
-    """The specified output method is not recognised or supported."""
-    pass
 
 class OutputGenerator:
     """A class for generating output from jinja2 templates."""
@@ -31,6 +21,7 @@ class OutputGenerator:
 
     def generate(self, template: str, context: Context) -> str:
         return self._jinja_env.get_template(template).render(context=context)
+
 
 class OutputSender:
 
@@ -50,8 +41,8 @@ class OutputSender:
             server = profile_config.get_output_config_value('smtp', 'server')
             port = profile_config.get_output_config_value('smtp', 'port')
         except configparser.Error:
-            raise BadConfigurationException('Could not read one or more necessary configuration values for SMTP. '
-                                            'Check your output.ini.')
+            raise BadConfigurationError('Could not read one or more necessary configuration values for SMTP. '
+                                        'Check your output.ini.')
 
         name = profile_config.get_main_config_value('name') or profile_config.profile_name
 
@@ -96,4 +87,4 @@ class OutputSender:
         elif method == 'stdout':
             return self.send_stdout(output)
         else:
-            raise BadMethodError(f"Bad output method: \"{method}\"")
+            raise BadConfigurationError(f"Bad output method: \"{method}\"")

@@ -184,12 +184,13 @@ class Profile:
         self.sync_reader()
         for (url, value) in self.reader.update_feeds_iter():
             if isinstance(value, UpdatedFeed):
-                logging.info(f'Got updated feed for {url}')
-                updated_urls.append(url)
+                logging.info(f'Got updated feed for {url} with {value.new} new entries '
+                             f'and {value.updated} updated entries.')
+                if value.new:
+                    updated_urls.append(url)
             elif isinstance(value, ReaderError):
                 logging.error(f'Got error when updating {url}')
                 error_urls.append(url)
-        self.last_updated = datetime.utcnow()
         return updated_urls, error_urls
 
     def get_unread_entries(self, mark_read: bool = False) -> Dict[str, List[Entry]]:
