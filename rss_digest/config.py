@@ -13,6 +13,7 @@ from typing import Optional, Any, Mapping
 import appdirs
 
 # Few helper functions
+from rss_digest.exceptions import BadConfigurationError
 from rss_digest.metadata import APP_NAME
 
 
@@ -75,7 +76,7 @@ class BaseConfig:
         if existing_output_config_file:
             shutil.copy(existing_output_config_file, output_config_file)
 
-        self.main_config = ConfigParser()
+        self.main_config = ConfigParser(interpolation=None)
         try:
             with open(self.main_config_file) as f:
                 self.main_config.read_file(f)
@@ -83,7 +84,7 @@ class BaseConfig:
             if require_config:
                 raise e
 
-        # Only load output.ini when we need it (as it could contain sensitive information)
+        # Only load output.ini when we need it
         self._output_config: Optional[ConfigParser] = None
 
         logging.debug(f'{self.__class__.__name__} initialised.')
@@ -98,7 +99,8 @@ class BaseConfig:
                 self._output_config.read_file(f)
         return self._output_config
 
-    def _get_config_value(self, conf: ConfigParser, types: Mapping[str, type], section: str, key: str) -> Any:
+    def _get_config_value(self, conf: ConfigParser, types: Mapping[str, type], section: str, key: str,
+                          fallback: Optional[Any] = None) -> Any:
         """Look up the given configuration value and return it as the
         appropriate datatype.
 
@@ -115,10 +117,25 @@ class BaseConfig:
         if raw_val is not None:
             to_type = types[key]
             logging.debug(f'Found value "{raw_val}"; converting to {to_type}.')
-            raw_val = to_type(raw_val)
+            try:
+                val = to_type(raw_val)
+            except (TypeError, ValueError) as e:
+                logging.debug("Received exception when converting.")
+                if not raw_val:
+                    # We can't convert the value (eg, to an int) because it is an empty string, which probably means
+                    # the key is present in the INI file but no value is specified. Treat this as equivalent to the
+                    # value not being present.
+                    logging.debug('Value not set.')
+                    val = fallback
+                else:
+                    # Value has been defined, but we can't convert it to the appropriate type. Raise an error.
+                    raise BadConfigurationError(f'Value "{raw_val}" for option "{key}" cannot be converted to type'
+                                                f'"{to_type}".')
+
         else:
-            logging.debug('Value not found!')
-        return raw_val
+            logging.debug('Value not found.')
+            val = fallback
+        return val
 
     def get_main_config_value(self, key: str) -> Any:
         """Get the configuration value for a particular option from the

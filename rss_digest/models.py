@@ -60,7 +60,8 @@ class Context:
         category.
 
         """
-        return (len(self.updated_categories) > 1) or (self.updated_categories[0].name is not None)
+        c = self.updated_categories
+        return (len(c) > 1) or (c and c[0].name is not None)
 
     def local_format(self, dt: datetime) -> str:
         """A "shortcut" to DateTimeHelper.local_formatted, to save
@@ -98,7 +99,8 @@ class CategoryResult:
 class FeedResult:
     """A data class representing a single updated feed."""
 
-    entries: List[EntryResult]  #: A list of Entry objects representing the feed's new entries.
+    #all_entries: List[EntryResult]  #: A list of Entry objects representing all of the feed's new entries.
+    entries: List[EntryResult]  #: A list of Entry objects to display.
     category: Optional[str]  #: The category of the feed.
     url: Optional[str]  #: The URL of the feed.
     updated_utc: Optional[datetime]  #: When the feed was last updated, or None.

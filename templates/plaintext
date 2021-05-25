@@ -1,26 +1,22 @@
-{% extends "_base.jinja2" %}
-{% block entries %}
-{% if context.has_categories %}
-  {% for c in context.updated_categories %}Category: {{ c.name }}
-
-    {% for f in c.feed %}{{ f.name }}
-
-      {% for e in f.entries %}
-
-      {{ e.title }} (by {{ e.author }} on {{ context.local_format(e.published_utc) }}
-
-      {% endfor %}
-    {% endfor %}
+{% extends "_base.jinja2" -%}
+{% block entries -%}
+{% if context.has_categories -%}
+{% for c in context.updated_categories %}
+Category: {{ c.name }}
+  {% for f in c.feeds %}
+  {{ f.title }}
+  {% for e in f.entries %}
+    {{+ e.title }} {{ m.author_date(e, context) }}
+    {{+ e.link }}
   {% endfor %}
-{% else %}
-  {% for f in context.updated_feeds %}{{ f.name }}
-
-    {% for e in f.entries %}
-
-    {{ e.title }} (by {{ e.author }} on {{ context.local_format(e.published_utc) }}
-
-    {% endfor %}
-  {% endfor %}
-{% endif %}
-
-{% endblock %}
+{% endfor -%}
+{% endfor -%}
+{% else -%}
+{% for f in context.updated_feeds %}{{ f.title }}
+{% for e in f.entries %}
+  {{+ e.title }} {{ m.author_date(e, context) }}
+  {{+ e.link }}
+{% endfor -%}
+{% endfor -%}
+{% endif -%}
+{% endblock -%}

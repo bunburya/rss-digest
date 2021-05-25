@@ -1,4 +1,5 @@
 """Functions and classes for using the command line interface."""
+import logging
 import sys
 import argparse
 from typing import Optional
@@ -48,7 +49,8 @@ class CLI:
         command line arguments.
 
         """
-
+        if args.debug:
+            logging.getLogger().setLevel(logging.INFO)
         args_dict = vars(args)
         self._config = AppConfig(
             args_dict['config_dir'],
@@ -118,7 +120,7 @@ class CLI:
         """
         self._app.run(
             profile_name=args.profile_name,
-            mark_read=not args.forget,
+            save=not args.forget,
             method=args.output_method,
             format=args.output_format
         )
@@ -133,6 +135,8 @@ def get_arg_parser(cli: CLI) -> argparse.ArgumentParser:
 
     parser.add_argument('--config-dir', '-c', help='Directory for configuration files.')
     parser.add_argument('--data-dir', '-d', help='Directory for data files.')
+
+    parser.add_argument('--debug', action='store_true', help='Debug mode (more verbose logging).')
 
     # Profile-related commands (list, add, delete, edit profiles, etc)
 

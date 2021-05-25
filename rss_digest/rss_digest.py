@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 import shutil
 import os
+from datetime import datetime
 from typing import List, Optional, Tuple, Dict
 
 from rss_digest.config import AppConfig
@@ -142,8 +143,9 @@ class RSSDigest:
         last_updated_utc = profile.last_updated
         updated, errors = self.update_feeds(profile.name)
         updated_utc = profile.last_updated
-
         unread = profile.get_unread_entries()
+        print(f'UPDATED: {updated}')
+        print(f'UNREAD: {unread.keys()}')
         updated_feeds = [feed_result_from_url(
             url, reader, feedlist, [entry_result_from_reader(e) for e in unread[url]]
         ) for url in updated]
@@ -169,14 +171,14 @@ class RSSDigest:
             datetime_helper=datetime_helper_from_config(profile_config)
         )
 
-    def run(self, profile_name: str, mark_read: bool = True,
+    def run(self, profile_name: str, save: bool = True,
             method: Optional[str] = None, format: Optional[str] = None):
         """Get unread entries for a given profile and send in the
         appropriate way.
 
         :param profile_name: The name of the profile.
-        :param mark_read: Whether to mark entries as read once they are
-            sent.
+        :param save: If True, mark entries as read and update the
+            "last_updated" value for the profile once the digest is sent.
         :param method: The method to use to send the digest.
         :param format: How the output should be formatted.
 
@@ -187,5 +189,7 @@ class RSSDigest:
         template = format or profile_config.get_main_config_value('output_format')
         output = self._output_generator.generate(template, context)
         self._output_sender.send(output, profile_config, method)
-        if mark_read:
+        if save:
             profile.mark_read()
+            profile.last_updated = datetime.utcnow()
+
