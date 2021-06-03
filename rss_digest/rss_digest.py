@@ -135,9 +135,6 @@ class RSSDigest:
 
         """
 
-        # FIXME: updated will only be the feeds that are actually fetched, so only looking at feeds in updated means
-        # --forget flag won't work.
-
         profile_config = profile.config
         app_config = self.config
         reader = profile.reader
@@ -158,7 +155,7 @@ class RSSDigest:
             others_dict = {}
             for f in category:
                 url = f.xml_url
-                if url in updated:
+                if url in unread:
                     updated_dict[url] = feed_result_from_reader(
                         reader.get_feed(url),
                         cat_name,
