@@ -9,6 +9,7 @@ from reader import Reader
 
 import reader
 from rss_digest.config import AppConfig, ProfileConfig
+from rss_digest.exceptions import FeedError
 from rss_digest.feedlist import FeedCategory, FeedList
 from rss_digest.models import FeedResult, CategoryResult, ConfigContext, EntryResult, ContentResult, DateTimeHelper
 
@@ -59,6 +60,7 @@ def feed_result_from_reader(feed: reader.types.Feed, category: Optional[str],
         last_retrieved_utc=feed.last_updated
     )
 
+
 def feed_result_from_url(url: str, reader: Reader, feedlist: FeedList, entries: List[EntryResult]) -> FeedResult:
     """Create a FeedResult from a URL.
 
@@ -66,6 +68,7 @@ def feed_result_from_url(url: str, reader: Reader, feedlist: FeedList, entries: 
     :param reader: The :class:`Reader` object, in order to get entries.
     :param feedlist: The :class:`FeedList` object, in order to get the
         feed category.
+    :param entries: A list of :class:`EntryResult` objects.
 
     """
     feed = reader.get_feed(url)
@@ -75,24 +78,42 @@ def feed_result_from_url(url: str, reader: Reader, feedlist: FeedList, entries: 
         entries=entries
     )
 
-def category_result_from_dict(url_dict: Dict[str, FeedResult], category: FeedCategory) -> CategoryResult:
+
+def category_result_from_dicts(updated: Dict[str, FeedResult], errors: Dict[str, FeedResult],
+                               others: Dict[str, FeedResult], category: FeedCategory) -> CategoryResult:
     """Generate a :class:`rss_digest.models.CategoryResult` object.
 
-    :param url_dict: A dict mapping feed URLs to :class:`FeedResult`
-        objects.
+    :param updated: A dict mapping feed URLs to :class:`FeedResult`
+        objects for feeds that have been updated.
+    :param errors: A dict mapping feed URLs to :class:`FeedResult`
+        objects for feeds that returned an error when trying to update
+        them.
+    :param others: A dict mapping feed URLs to :class:`FeedResult`
+        objects for other feeds.
     :param category: A :class:`FeedCategory` object for the relevant
         category. This is needed in order to get the right order for
         the feeds.
 
     """
 
-    feeds = []
+    _updated = []
+    _errors = []
+    _others = []
     for url in category.feed_urls:
-        if url in url_dict:
-            feeds.append(url_dict[url])
+        if url in updated:
+            _updated.append(updated[url])
+        elif url in errors:
+            _errors.append(errors[url])
+        elif url in others:
+            _others.append(others[url])
+        else:
+            raise FeedError(f'Feed URL "{url}" is present in FeedCategory but not accounted for in `updated`, `errors`'
+                            f'or `others`.')
     return CategoryResult(
         category.name,
-        feeds
+        _updated,
+        _errors,
+        _others
     )
 
 
@@ -107,6 +128,7 @@ def config_context_from_configs(app_config: AppConfig, profile_config: ProfileCo
         profile_config.get_main_config_value('max_displayed_feeds'),
     )
 
+
 def datetime_helper_from_config(profile_config: ProfileConfig) -> DateTimeHelper:
     """Generate a :class:`DateTimeHelper` object from a
     :class:`ProfileConfig` object.
@@ -116,4 +138,3 @@ def datetime_helper_from_config(profile_config: ProfileConfig) -> DateTimeHelper
         profile_config.get_main_config_value('datetime_format'),
         timezone(profile_config.get_main_config_value('timezone'))
     )
-

@@ -7,7 +7,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, tzinfo
-from typing import Optional, List
+from typing import Optional, List, Generator
+
+try:
+    from functools import cached_property
+except ImportError:
+    # cached_property is not available (probably because Python < 3.8).
+    # Just use normal property decorator. Performance will be slightly worse.
+    cached_property = property
+
 
 @dataclass
 class Context:
@@ -19,40 +27,86 @@ class Context:
     profile_name: str  #: The name of the profile.
     update_time_utc: datetime  #: The date and time of this update in UTC.
     last_update_utc: Optional[datetime]  #: The date and time of the last update in UTC, or None.
-    updated_feeds: List[FeedResult]  #: A list of Feed objects, containing feeds with new or updated entries.
-    updated_categories: List[CategoryResult]  #: A list of Category objects, containing updated feeds.
-    error_feeds: List[FeedResult]  #: A list of Feed objects, representing feeds for which an error was obtained.
+    categories: List[CategoryResult]  #: A list of CategoryResult objects.
     config: ConfigContext  #: A ConfigContext object with some information about how output should be displayed.
     subscribed_feeds_count: int  #: How many feeds, in total, the profile is subscribed to.
     datetime_helper: DateTimeHelper  #: A helper function for displaying and converting dates and times.
 
-    @property
+    @cached_property
+    def updated_feeds(self) -> List[FeedResult]:
+        """All feeds which were updated."""
+        feeds = []
+        for c in self.categories:
+            for f in c.updated_feeds:
+                feeds.append(f)
+        return feeds
+
+    @cached_property
     def updated_feeds_count(self) -> int:
         """The number of updated feeds."""
         return len(self.updated_feeds)
 
-    @property
+    @cached_property
+    def updated_categories(self) -> List[CategoryResult]:
+        """A list of CategoryResult objects which contain at least one
+        updated feed.
+
+        """
+        return list(filter(lambda c: c.updated_feeds, self.categories))
+
+    @cached_property
     def updated_categories_count(self) -> int:
         """The number of categories containing at least one updated
         feed.
 
         """
-        return len(self.updated_categories)
+        count = 0
+        for c in self.categories:
+            if c.updated_feeds:
+                count += 1
+        return count
 
-    @property
+    @cached_property
     def updated_entries_count(self) ->int:
         """The total number of new or updated entries."""
         return sum(f.entries_count for f in self.updated_feeds)
 
-    @property
-    def error_count(self) -> int:
+    @cached_property
+    def error_feeds(self) -> List[FeedResult]:
+        """All feeds for which errors were encountered when trying to
+        update.
+
+        """
+        feeds = []
+        for c in self.categories:
+            for f in c.error_feeds:
+                feeds.append(f)
+        return feeds
+
+    @cached_property
+    def error_feeds_count(self) -> int:
         """The number of feeds that returned an error when updating."""
         return len(self.error_feeds)
 
+    @cached_property
+    def other_feeds(self) -> List[FeedResult]:
+        """All feeds which were successfully fetched but for which there
+        are no updates.
+
+        """
+        feeds = []
+        for c in self.categories:
+            for f in c.other_feeds:
+                feeds.append(f)
+        return feeds
+
     @property
-    def non_updated_feeds_count(self) -> int:
-        """The number of subscribed feeds that have not been updated."""
-        return self.subscribed_feeds_count - self.updated_feeds_count
+    def other_feeds_count(self) -> int:
+        """The number of feeds that were successfully fetched but have
+        not been updated.
+
+        """
+        return len(self.other_feeds)
 
     @property
     def has_categories(self) -> bool:
@@ -88,12 +142,23 @@ class CategoryResult:
     """A data class representing a category of updated feeds."""
 
     name: Optional[str]  #: The name of the category, or None if this object contains feeds with no category.
-    feeds: List[FeedResult]  #: A list of feeds in this category.
+    updated_feeds: List[FeedResult]  #: Updated feeds in this category.
+    error_feeds: List[FeedResult]  #: Feeds in this category that returned an error when trying to update.
+    other_feeds: List[FeedResult]  #: Feeds in this category that don't belong to updated_feeds or error_feeds.
 
     @property
-    def feed_count(self) -> int:
-        """The number of feeds present."""
-        return len(self.feeds)
+    def updated_feed_count(self) -> int:
+        """The number of feeds that have been updated."""
+        return len(self.updated_feeds)
+
+    @property
+    def error_feed_count(self) -> int:
+        """The number of feeds that returned an error when trying to update them."""
+        return len(self.error_feeds)
+
+    def other_feed_count(self) -> int:
+        """The number of feeds that were not updated and did not return an error."""
+        return len(self.other_feeds)
 
 @dataclass
 class FeedResult:
@@ -158,9 +223,9 @@ class DateTimeHelper:
         """
         return dt.astimezone(self.local_timezone) if dt is not None else None
 
-    def formatted(self, dt: datetime) -> str:
+    def formatted(self, dt: Optional[datetime]) -> Optional[str]:
         """Format a :class:`datetime` object as a string."""
-        return dt.strftime(self.format)
+        return dt.strftime(self.format) if dt is not None else None
 
     def local_formatted(self, dt: datetime) -> str:
         """Convert a :class:`datetime` object to the user's local
