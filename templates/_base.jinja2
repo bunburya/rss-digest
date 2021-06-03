@@ -8,7 +8,7 @@ This is your RSS feed digest for {{ context.local_format(context.update_time_utc
 {% endblock -%}
 {% block entries %}{% endblock -%}
 {% block epilogue -%}
-{% if context.non_updated_feeds_count > 0 -%}
-{{ context.non_updated_feeds_count }} feed{% if context.non_updated_feeds_count == 1 %} has{% else %}s have{% endif %} no new or updated posts since your last update.
+{% if context.other_feeds_count > 0 -%}
+{{ context.other_feeds_count }} feed{% if context.other_feeds_count == 1 %} has{% else %}s have{% endif %} no new or updated posts since your last update.
 {% endif -%}
 {% endblock -%}

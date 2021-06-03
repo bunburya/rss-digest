@@ -7,13 +7,13 @@ import logging
 import shutil
 import os
 from datetime import datetime
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Set
 
 from rss_digest.config import AppConfig
-from rss_digest.exceptions import ProfileExistsError, ProfileNotFoundError
+from rss_digest.exceptions import ProfileExistsError, ProfileNotFoundError, FeedError
 from rss_digest.feedlist import WILDCARD
 from rss_digest.model_utils import config_context_from_configs, feed_result_from_reader, feed_result_from_url, \
-    entry_result_from_reader, category_result_from_dict, datetime_helper_from_config
+    entry_result_from_reader, category_result_from_dicts, datetime_helper_from_config
 from rss_digest.models import ConfigContext, Context
 from rss_digest.output import OutputGenerator, OutputSender
 from rss_digest.profile import Profile
@@ -102,7 +102,7 @@ class RSSDigest:
         """
         return self.get_profile(profile_name).delete_feeds(feed_url, feed_title, category)
 
-    def update_feeds(self, profile_name: str) -> Tuple[List[str], List[str]]:
+    def update_feeds(self, profile_name: str) -> Tuple[Set[str], Set[str]]:
         """Update all feeds for a given profile.
 
         :return: A tuple of two lists, the first of which is the list
@@ -131,41 +131,68 @@ class RSSDigest:
         Context object which can be used to generate the output to be
         sent to the user.
 
-        :param profile_name: The name of the profile to be updated.
+        :param profile: The profile to be updated.
 
         """
+
+        # FIXME: updated will only be the feeds that are actually fetched, so only looking at feeds in updated means
+        # --forget flag won't work.
 
         profile_config = profile.config
         app_config = self.config
         reader = profile.reader
         feedlist = profile.feedlist
-        local_tz = profile.local_timezone
         last_updated_utc = profile.last_updated
         updated, errors = self.update_feeds(profile.name)
-        updated_utc = profile.last_updated
+        not_inactive = updated | errors  # URLs for all feeds that were either updated or errors (in other words, if a
+                                         # URL is not in this set, we were able to fetch it but there were no updates
+                                         # available).
+        others = {f.xml_url for f in feedlist.feeds if f.xml_url not in not_inactive}
+        updated_utc = datetime.utcnow()
         unread = profile.get_unread_entries()
-        print(f'UPDATED: {updated}')
-        print(f'UNREAD: {unread.keys()}')
-        updated_feeds = [feed_result_from_url(
-            url, reader, feedlist, [entry_result_from_reader(e) for e in unread[url]]
-        ) for url in updated]
-        sorted_by_category = feedlist.sort_by_category(updated)
-        updated_categories = []
-        for c in feedlist.categories:
-            if c in sorted_by_category:
-                updated_categories.append(category_result_from_dict(
-                    {f.url: f for f in updated_feeds if f.url in sorted_by_category[c]},
-                    feedlist.categories[c]
-                ))
-        error_feeds = [feed_result_from_url(url, reader, feedlist, []) for url in errors]
+        categories = []
+        for cat_name in feedlist.categories:
+            category = feedlist.categories[cat_name]
+            updated_dict = {}
+            errors_dict = {}
+            others_dict = {}
+            for f in category:
+                url = f.xml_url
+                if url in updated:
+                    updated_dict[url] = feed_result_from_reader(
+                        reader.get_feed(url),
+                        cat_name,
+                        [entry_result_from_reader(e) for e in unread[url]]
+                    )
+                elif url in errors:
+                    errors_dict[url] = feed_result_from_url(
+                        url,
+                        reader,
+                        feedlist,
+                        []
+                    )
+                elif url in others:
+                    others_dict[url] = feed_result_from_url(
+                        url,
+                        reader,
+                        feedlist,
+                        []
+                    )
+                else:
+                    raise FeedError(f'Feed URL "{url}" is present in FeedCategory but not accounted for in `updated`, '
+                                    f'`errors` or `others`.')
+            categories.append(category_result_from_dicts(
+                updated_dict,
+                errors_dict,
+                others_dict,
+                category
+            ))
 
         return Context(
             profile_name=profile.name,
             update_time_utc=updated_utc,
             last_update_utc=last_updated_utc,
-            updated_feeds=updated_feeds,
-            updated_categories=updated_categories,
-            error_feeds=error_feeds,
+            categories=categories,
             config=config_context_from_configs(app_config, profile_config),
             subscribed_feeds_count=len(feedlist.feeds),
             datetime_helper=datetime_helper_from_config(profile_config)

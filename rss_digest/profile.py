@@ -5,7 +5,7 @@ import shutil
 
 from dataclasses import dataclass
 from datetime import datetime, timezone, tzinfo
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Set
 
 import pytz
 from reader import Reader, make_reader, FeedExistsError as reader_FeedExistsError, ParseError, ReaderError, UpdatedFeed, \
@@ -13,7 +13,7 @@ from reader import Reader, make_reader, FeedExistsError as reader_FeedExistsErro
 from rss_digest.config import ProfileConfig
 from rss_digest.exceptions import FeedExistsError, FeedError
 from rss_digest.feedlist import FeedList, from_opml_file, WILDCARD
-from rss_digest.model_utils import entry_result_from_reader, feed_result_from_reader, category_result_from_dict
+from rss_digest.model_utils import entry_result_from_reader, feed_result_from_reader, category_result_from_dicts
 from rss_digest.models import CategoryResult, FeedResult
 
 
@@ -169,7 +169,7 @@ class Profile:
         if sync:
             self.sync_reader()
 
-    def update_feeds(self) -> Tuple[List[str], List[str]]:
+    def update_feeds(self) -> Tuple[Set[str], Set[str]]:
         """Update all feeds for this profile.
 
         :return: A tuple of two lists, the first of which is the list
@@ -179,18 +179,18 @@ class Profile:
 
         """
 
-        updated_urls = []
-        error_urls = []
+        updated_urls = set()
+        error_urls = set()
         self.sync_reader()
         for (url, value) in self.reader.update_feeds_iter():
             if isinstance(value, UpdatedFeed):
                 logging.info(f'Got updated feed for {url} with {value.new} new entries '
                              f'and {value.updated} updated entries.')
                 if value.new:
-                    updated_urls.append(url)
+                    updated_urls.add(url)
             elif isinstance(value, ReaderError):
                 logging.error(f'Got error when updating {url}')
-                error_urls.append(url)
+                error_urls.add(url)
         return updated_urls, error_urls
 
     def get_unread_entries(self, mark_read: bool = False) -> Dict[str, List[Entry]]:
@@ -225,41 +225,4 @@ class Profile:
             entries = self.reader.get_entries(read=False)
         for e in entries:
             self.reader.mark_as_read(e)
-
-    def get_category_results(self, mark_read: bool) -> List[CategoryResult]:
-        """Get new entries, and use them to build a list of
-        :class:`CategoryResult` objects that can be used to generate
-        the output.
-
-        :param mark_read: Whether to mark all new entries as read as we
-            retrieve them. We probably don't normally don't want to do
-            this, as it's better to wait until we have successfully
-            generated (and preferably sent) the output.
-        :return: A list of :class:`CategoryResult` objects, each of
-            which corresponds to a user-defined category (or no
-            category) and contains updated feeds belonging to that
-            category.
-
-        """
-
-        unread = self.get_unread_entries(mark_read)
-        # A dict mapping category names to dicts. Each key dict is a mapping of feed URLs to FeedResult objects.
-        category_feed_results: Dict[str, Dict[str, FeedResult]] = {}
-        for url in unread:
-            entries = [entry_result_from_reader(e) for e in unread[url]]
-            reader_feed = self.reader.get_feed(url)
-            category = self.feedlist.get_feed_by_url(url).category
-            if category in category_feed_results:
-                category_feed_results[category][url] = feed_result_from_reader(reader_feed, category, entries)
-            else:
-                category_feed_results[category] = {url: feed_result_from_reader(reader_feed, category, entries)}
-        category_results = []
-        for c in self.feedlist.categories:
-            if c in category_feed_results:
-                category_results.append(category_result_from_dict(
-                    category_feed_results[c],
-                    self.feedlist.categories[c]
-                ))
-        return category_results
-
 

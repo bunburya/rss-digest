@@ -299,7 +299,7 @@ class FeedList:
         """Arrange a list of URLs by category.
 
         :param urls: A list of URLs to sort.
-        :return: A dict mapping category names to lists of URLs.
+        :return: An ordered mapping of category names to lists of URLs.
 
         """
         categories = OrderedDict()
