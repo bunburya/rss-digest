@@ -1,0 +1,12 @@
+{% macro author_date(entry, ctx) -%}
+{# Generate a line describing a single entry, including its publication date and author, where available. -#}
+{% if entry.author or entry.published_utc -%}({% if entry.author %}by {{ entry.author }}{% endif -%}
+{% if entry.author and entry.published_utc %} {% endif -%}
+{% if entry.published_utc %}on {{ ctx.local_format(entry.published_utc) }}{% endif %}){% endif -%}
+{% endmacro -%}
+
+{% macro header(text, char, indent='') -%}
+{# Generate a header from text by placing a line of chars directly underneath it. -#}
+{{ text }}
+{{ indent }}{{ char * "%s"|format(text)|length }}
+{% endmacro -%}

@@ -182,7 +182,8 @@ class RSSDigest:
                 updated_dict,
                 errors_dict,
                 others_dict,
-                category
+                category,
+                profile_config.get_main_config_value('no_category_name')
             ))
 
         return Context(
@@ -209,6 +210,7 @@ class RSSDigest:
         """
         profile = self.get_profile(profile_name)
         context = self.update_and_get_context(profile)
+        #print(context)
         profile_config = profile.config
         template = format or profile_config.get_main_config_value('output_format')
         output = self._output_generator.generate(template, context)

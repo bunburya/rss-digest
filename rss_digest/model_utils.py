@@ -80,7 +80,8 @@ def feed_result_from_url(url: str, reader: Reader, feedlist: FeedList, entries: 
 
 
 def category_result_from_dicts(updated: Dict[str, FeedResult], errors: Dict[str, FeedResult],
-                               others: Dict[str, FeedResult], category: FeedCategory) -> CategoryResult:
+                               others: Dict[str, FeedResult], category: FeedCategory,
+                               no_category_name: str) -> CategoryResult:
     """Generate a :class:`rss_digest.models.CategoryResult` object.
 
     :param updated: A dict mapping feed URLs to :class:`FeedResult`
@@ -110,7 +111,7 @@ def category_result_from_dicts(updated: Dict[str, FeedResult], errors: Dict[str,
             raise FeedError(f'Feed URL "{url}" is present in FeedCategory but not accounted for in `updated`, `errors`'
                             f'or `others`.')
     return CategoryResult(
-        category.name,
+        category.name if category.name is not None else no_category_name,
         _updated,
         _errors,
         _others
