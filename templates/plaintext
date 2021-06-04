@@ -1,10 +1,11 @@
 {% extends "_base.jinja2" -%}
+{% import '_plaintext_macros.jinja2' as m -%}
 {% block entries -%}
 {% if context.has_categories -%}
-{% for c in context.updated_categories %}
-Category: {{ c.name }}
-  {% for f in c.feeds %}
-  {{ f.title }}
+{% for c in context.updated_categories -%}
+{{ m.header(c.name, '=') }}
+  {% for f in c.updated_feeds -%}
+  {{- m.header(f.title, '-', '  ') -}}
   {% for e in f.entries %}
     {{+ e.title }} {{ m.author_date(e, context) }}
     {{+ e.link }}
@@ -12,9 +13,9 @@ Category: {{ c.name }}
 {% endfor -%}
 {% endfor -%}
 {% else -%}
-{% for f in context.updated_feeds %}{{ f.title }}
-{% for e in f.entries %}
-  {{+ e.title }} {{ m.author_date(e, context) }}
+{% for f in context.updated_feeds %}{{ m.header(f.title, '-') }}
+{% for e in f.entries -%}
+  {{+ e.title }} {{ m.author_date(e, context) -}}
   {{+ e.link }}
 {% endfor -%}
 {% endfor -%}

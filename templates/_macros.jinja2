@@ -1,5 +1,0 @@
-{% macro author_date(entry, ctx) -%}
-{% if entry.author or entry.published_utc -%}({% if entry.author %}by {{ entry.author }}{% endif -%}
-{% if entry.author and entry.published_utc %} {% endif -%}
-{% if entry.published_utc %}on {{ ctx.local_format(entry.published_utc) }}{% endif %}){% endif -%}
-{% endmacro -%}

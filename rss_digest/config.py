@@ -39,7 +39,8 @@ MAIN_CONFIG_TYPES = {
     'date_format': str,
     'time_format': str,
     'datetime_format': str,
-    'timezone': str
+    'timezone': str,
+    'no_category_name': str
 }
 
 OUTPUT_CONFIG_TYPES = {
