@@ -4,20 +4,13 @@
 {% if context.has_categories -%}
 {% for c in context.updated_categories -%}
 {{ m.header(c.name, '=') }}
-  {% for f in c.updated_feeds -%}
-  {{- m.header(f.title, '-', '  ') -}}
-  {% for e in f.entries %}
-    {{+ e.title }} {{ m.author_date(e, context) }}
-    {{+ e.link }}
-  {% endfor %}
+{% for f in c.visible_updated_feeds -%}
+{{ m.display_feed(f, '  ', '    ') }}
 {% endfor -%}
 {% endfor -%}
 {% else -%}
-{% for f in context.updated_feeds %}{{ m.header(f.title, '-') }}
-{% for e in f.entries -%}
-  {{+ e.title }} {{ m.author_date(e, context) -}}
-  {{+ e.link }}
-{% endfor -%}
+{% for f in context.visible_updated_feeds %}
+{{ m.display_feed(f, '  ', '    ') }}
 {% endfor -%}
 {% endif -%}
 {% endblock -%}

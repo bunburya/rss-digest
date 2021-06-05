@@ -99,7 +99,7 @@ class OutputGenerator:
             'gen_date': gen_date,
             'gen_time': gen_time,
             'new_entries_total': feed_handler.new_entries_total,
-            'updated_feeds_count': len(feed_handler.updated_feeds),
+            'updated_feeds_count': len(feed_handler.all_updated_feeds),
             'subscribed_feeds_count': len(feed_handler.categories),
             'new_entries_count': feed_handler.new_entries_count,
             'get_author': feed_handler.get_author,

@@ -44,13 +44,14 @@ def entry_result_from_reader(entry: reader.types.Entry) -> EntryResult:
 
 
 def feed_result_from_reader(feed: reader.types.Feed, category: Optional[str],
-                            entries: List[EntryResult]) -> FeedResult:
+                            entries: List[EntryResult], config: ProfileConfig) -> FeedResult:
     """Generate a :class:`rss_digest.models.FeedResult` object from a
     :class:`reader.Feed` object.
 
     """
     return FeedResult(
-        entries=entries,
+        visible_new_entries=entries[:config.get_main_config_value('max_displayed_entries')],
+        all_new_entries=entries,
         category=category,
         url=feed.url,
         updated_utc=feed.updated,
@@ -61,7 +62,8 @@ def feed_result_from_reader(feed: reader.types.Feed, category: Optional[str],
     )
 
 
-def feed_result_from_url(url: str, reader: Reader, feedlist: FeedList, entries: List[EntryResult]) -> FeedResult:
+def feed_result_from_url(url: str, reader: Reader, feedlist: FeedList, entries: List[EntryResult],
+                         config: ProfileConfig) -> FeedResult:
     """Create a FeedResult from a URL.
 
     :param url: The URL of the feed.
@@ -69,19 +71,22 @@ def feed_result_from_url(url: str, reader: Reader, feedlist: FeedList, entries: 
     :param feedlist: The :class:`FeedList` object, in order to get the
         feed category.
     :param entries: A list of :class:`EntryResult` objects.
+    :param config: A :class:`ProfileConfig` object in order to get
+        certain user preferences.
 
     """
     feed = reader.get_feed(url)
     return feed_result_from_reader(
         feed=feed,
         category=feedlist.get_feed_by_url(url).category,
-        entries=entries
+        entries=entries,
+        config=config
     )
 
 
 def category_result_from_dicts(updated: Dict[str, FeedResult], errors: Dict[str, FeedResult],
                                others: Dict[str, FeedResult], category: FeedCategory,
-                               no_category_name: str) -> CategoryResult:
+                               config: ProfileConfig) -> CategoryResult:
     """Generate a :class:`rss_digest.models.CategoryResult` object.
 
     :param updated: A dict mapping feed URLs to :class:`FeedResult`
@@ -94,6 +99,8 @@ def category_result_from_dicts(updated: Dict[str, FeedResult], errors: Dict[str,
     :param category: A :class:`FeedCategory` object for the relevant
         category. This is needed in order to get the right order for
         the feeds.
+    :param config: A :class:`ProfileConfig` object to get certain
+        relevant configuration options.
 
     """
 
@@ -110,11 +117,19 @@ def category_result_from_dicts(updated: Dict[str, FeedResult], errors: Dict[str,
         else:
             raise FeedError(f'Feed URL "{url}" is present in FeedCategory but not accounted for in `updated`, `errors`'
                             f'or `others`.')
+    if category.name is not None:
+        _name = category.name
+    else:
+        _name = config.get_main_config_value('no_category_name')
+
+    _visible = _updated[:config.get_main_config_value('max_displayed_feeds')]
+
     return CategoryResult(
-        category.name if category.name is not None else no_category_name,
-        _updated,
-        _errors,
-        _others
+        name=category.name if category.name is not None else config.get_main_config_value('no_category_name'),
+        visible_updated_feeds=_visible,
+        all_updated_feeds=_updated,
+        error_feeds=_errors,
+        other_feeds=_others
     )
 
 
