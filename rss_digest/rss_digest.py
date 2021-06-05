@@ -159,21 +159,24 @@ class RSSDigest:
                     updated_dict[url] = feed_result_from_reader(
                         reader.get_feed(url),
                         cat_name,
-                        [entry_result_from_reader(e) for e in unread[url]]
+                        [entry_result_from_reader(e) for e in unread[url]],
+                        profile_config
                     )
                 elif url in errors:
                     errors_dict[url] = feed_result_from_url(
                         url,
                         reader,
                         feedlist,
-                        []
+                        [],
+                        profile_config
                     )
                 elif url in others:
                     others_dict[url] = feed_result_from_url(
                         url,
                         reader,
                         feedlist,
-                        []
+                        [],
+                        profile_config
                     )
                 else:
                     raise FeedError(f'Feed URL "{url}" is present in FeedCategory but not accounted for in `updated`, '
@@ -183,7 +186,7 @@ class RSSDigest:
                 errors_dict,
                 others_dict,
                 category,
-                profile_config.get_main_config_value('no_category_name')
+                profile_config
             ))
 
         return Context(

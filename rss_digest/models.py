@@ -34,18 +34,18 @@ class Context:
     datetime_helper: DateTimeHelper  #: A helper function for displaying and converting dates and times.
 
     @cached_property
-    def updated_feeds(self) -> List[FeedResult]:
+    def all_updated_feeds(self) -> List[FeedResult]:
         """All feeds which were updated."""
         feeds = []
         for c in self.categories:
-            for f in c.updated_feeds:
+            for f in c.all_updated_feeds:
                 feeds.append(f)
         return feeds
 
     @cached_property
     def updated_feeds_count(self) -> int:
         """The number of updated feeds."""
-        return len(self.updated_feeds)
+        return len(self.all_updated_feeds)
 
     @cached_property
     def updated_categories(self) -> List[CategoryResult]:
@@ -53,7 +53,7 @@ class Context:
         updated feed.
 
         """
-        return list(filter(lambda c: c.updated_feeds, self.categories))
+        return list(filter(lambda c: c.all_updated_feeds, self.categories))
 
     @cached_property
     def updated_categories_count(self) -> int:
@@ -63,14 +63,14 @@ class Context:
         """
         count = 0
         for c in self.categories:
-            if c.updated_feeds:
+            if c.all_updated_feeds:
                 count += 1
         return count
 
     @cached_property
-    def updated_entries_count(self) ->int:
+    def updated_entries_count(self) -> int:
         """The total number of new or updated entries."""
-        return sum(f.entries_count for f in self.updated_feeds)
+        return sum(f.all_new_entries_count for f in self.all_updated_feeds)
 
     @cached_property
     def error_feeds(self) -> List[FeedResult]:
@@ -101,7 +101,7 @@ class Context:
                 feeds.append(f)
         return feeds
 
-    @property
+    @cached_property
     def other_feeds_count(self) -> int:
         """The number of feeds that were successfully fetched but have
         not been updated.
@@ -109,7 +109,7 @@ class Context:
         """
         return len(self.other_feeds)
 
-    @property
+    @cached_property
     def has_categories(self) -> bool:
         """Whether at least one of the updated feeds belongs to a
         category.
@@ -143,20 +143,36 @@ class CategoryResult:
     """A data class representing a category of updated feeds."""
 
     name: Optional[str]  #: The name of the category, or None if this object contains feeds with no category.
-    updated_feeds: List[FeedResult]  #: Updated feeds in this category.
+    visible_updated_feeds: List[FeedResult]  #: Updated feeds in this category to display to the user.
+    all_updated_feeds: List[FeedResult]  #: All updated feeds in this category.
     error_feeds: List[FeedResult]  #: Feeds in this category that returned an error when trying to update.
     other_feeds: List[FeedResult]  #: Feeds in this category that don't belong to updated_feeds or error_feeds.
 
-    @property
-    def updated_feed_count(self) -> int:
-        """The number of feeds that have been updated."""
-        return len(self.updated_feeds)
+    @cached_property
+    def all_updated_feed_count(self) -> int:
+        """The number of all updated feeds."""
+        return len(self.all_updated_feeds)
 
-    @property
+    @cached_property
+    def visible_updated_feed_count(self) -> int:
+        """The number of updated feeds that should be shown to the user."""
+        return len(self.visible_updated_feeds)
+
+    @cached_property
+    def invisible_updated_feed_count(self) -> int:
+        """The number of updated feeds that should not be shown to the
+        user, by virtue of being over the user-specified limit of feeds
+        to display.
+
+        """
+        return self.all_updated_feed_count - self.visible_updated_feed_count
+
+    @cached_property
     def error_feed_count(self) -> int:
         """The number of feeds that returned an error when trying to update them."""
         return len(self.error_feeds)
 
+    @cached_property
     def other_feed_count(self) -> int:
         """The number of feeds that were not updated and did not return an error."""
         return len(self.other_feeds)
@@ -165,8 +181,8 @@ class CategoryResult:
 class FeedResult:
     """A data class representing a single updated feed."""
 
-    #all_entries: List[EntryResult]  #: A list of Entry objects representing all of the feed's new entries.
-    entries: List[EntryResult]  #: A list of Entry objects to display.
+    all_new_entries: List[EntryResult]  #: A list of Entry objects representing all new/updated entries.
+    visible_new_entries: List[EntryResult]  #: A list of new/updated Entry objects to display.
     category: Optional[str]  #: The category of the feed.
     url: Optional[str]  #: The URL of the feed.
     updated_utc: Optional[datetime]  #: When the feed was last updated, or None.
@@ -176,10 +192,27 @@ class FeedResult:
     #user_title: Optional[str]  #: The user-defined title of the feed.
     last_retrieved_utc: Optional[datetime]  #: When the feed was last retrieved, or None.
 
-    @property
-    def entries_count(self) -> int:
-        """The number of entries present."""
-        return len(self.entries)
+    @cached_property
+    def visible_new_entries_count(self) -> int:
+        """The number of new or updated entries to display to the user."""
+        return len(self.visible_new_entries)
+
+    @cached_property
+    def all_new_entries_count(self) -> int:
+        """The number of all new or updated entries."""
+        return len(self.all_new_entries)
+
+    @cached_property
+    def invisible_new_entries_count(self) -> int:
+        """The number of new or updated entries that should not be shown
+        to the user as they exceed the specified maximum number of
+        entries to display.
+
+        """
+        print(f'all: {self.all_new_entries_count}')
+        print(f'visible: {self.visible_new_entries_count}')
+        print(f'invisible: {self.all_new_entries_count - self.visible_new_entries_count}')
+        return self.all_new_entries_count - self.visible_new_entries_count
 
 
 @dataclass

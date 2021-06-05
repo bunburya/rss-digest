@@ -7,6 +7,18 @@
 
 {% macro header(text, char, indent='') -%}
 {# Generate a header from text by placing a line of chars directly underneath it. -#}
-{{ text }}
+{{ indent }}{{ text }}
 {{ indent }}{{ char * "%s"|format(text)|length }}
+{% endmacro -%}
+
+{% macro display_feed(feed, feed_indent='', entry_indent='') -%}
+{# Display a single feed. -#}
+{{ indent }}{{ header(feed.title, '-', feed_indent) -}}
+{% for e in feed.visible_new_entries %}
+{{ entry_indent }}{{ e.title }} {{ author_date(e, context) }}
+{{ entry_indent }}{{ e.link }}
+{% endfor %}
+{% if feed.invisible_new_entries_count > 0 -%}
+{{- feed_indent }}{{ feed.invisible_new_entries_count }} more new or updated entries at {{ feed.url }}
+{% endif %}
 {% endmacro -%}
