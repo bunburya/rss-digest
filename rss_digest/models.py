@@ -149,31 +149,31 @@ class CategoryResult:
     other_feeds: List[FeedResult]  #: Feeds in this category that don't belong to updated_feeds or error_feeds.
 
     @cached_property
-    def all_updated_feed_count(self) -> int:
+    def all_updated_feeds_count(self) -> int:
         """The number of all updated feeds."""
         return len(self.all_updated_feeds)
 
     @cached_property
-    def visible_updated_feed_count(self) -> int:
+    def visible_updated_feeds_count(self) -> int:
         """The number of updated feeds that should be shown to the user."""
         return len(self.visible_updated_feeds)
 
     @cached_property
-    def invisible_updated_feed_count(self) -> int:
+    def invisible_updated_feeds_count(self) -> int:
         """The number of updated feeds that should not be shown to the
         user, by virtue of being over the user-specified limit of feeds
         to display.
 
         """
-        return self.all_updated_feed_count - self.visible_updated_feed_count
+        return self.all_updated_feeds_count - self.visible_updated_feeds_count
 
     @cached_property
-    def error_feed_count(self) -> int:
+    def error_feeds_count(self) -> int:
         """The number of feeds that returned an error when trying to update them."""
         return len(self.error_feeds)
 
     @cached_property
-    def other_feed_count(self) -> int:
+    def other_feeds_count(self) -> int:
         """The number of feeds that were not updated and did not return an error."""
         return len(self.other_feeds)
 
