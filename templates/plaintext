@@ -3,10 +3,7 @@
 {% block entries -%}
 {% if context.has_categories -%}
 {% for c in context.updated_categories -%}
-{{ m.header(c.name, '=') }}
-{% for f in c.visible_updated_feeds -%}
-{{ m.display_feed(f, '  ', '    ') }}
-{% endfor -%}
+{{ m.display_category(c, '', '  ', '    ') -}}
 {% endfor -%}
 {% else -%}
 {% for f in context.visible_updated_feeds %}
