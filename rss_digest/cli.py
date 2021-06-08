@@ -145,15 +145,6 @@ def get_arg_parser(cli: CLI) -> argparse.ArgumentParser:
 
     add_profile_parser = profile_cmds.add_parser('add', description='Add a new profile.')
     add_profile_parser.add_argument('profile_name', help='The name of the profile.')
-    add_profile_parser.add_argument('--output-method', help='The default output method for this profile.',
-                                    choices=OUTPUT_METHODS)
-    add_profile_parser.add_argument('--output-email', metavar='EMAIL',
-                                    help='The email to which the digest should be sent for this user (if relevant).')
-    add_profile_parser.add_argument('--output-file', metavar='FILE',
-                                    help='The file to which the digest should be saved for this user (if relevant).')
-    add_profile_parser.add_argument('--user-name', metavar='NAME',
-                                    help='The name of the user of the profile (which may be used in the output). '
-                                         'If not provided, defaults to the profile name.')
     add_profile_parser.set_defaults(func=cli.add_profile)
 
     delete_profile_parser = profile_cmds.add_parser('delete', description='Delete the given profile.')
