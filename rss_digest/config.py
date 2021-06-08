@@ -214,8 +214,7 @@ class AppConfig(BaseConfig):
         """
         return os.path.join(self.profiles_data_dir, name)
 
-    def get_profile_config(self, name: str, config_ini: Optional[str] = None, output_ini: Optional[str] = None,
-                           opml_file: Optional[str] = None) -> ProfileConfig:
+    def get_profile_config(self, name: str) -> ProfileConfig:
         """Get a ProfileConfig object for a specific profile.
 
         :param name: The name of the profile.
