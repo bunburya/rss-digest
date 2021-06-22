@@ -110,6 +110,11 @@ class Context:
         return len(self.other_feeds)
 
     @cached_property
+    def other_feeds_titles(self) -> List[str]:
+        """The titles of other feeds, as a list of strings."""
+        return [f.title for f in self.other_feeds]
+
+    @cached_property
     def has_categories(self) -> bool:
         """Whether at least one of the updated feeds belongs to a
         category.

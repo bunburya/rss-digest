@@ -1,4 +1,4 @@
-{% macro author_date(entry, ctx) -%}
+{% macro author_date(entry) -%}
 {# Generate a line describing a single entry, including its publication date and author, where available. -#}
 {% if entry.author or entry.published_utc -%}({% if entry.author %}by {{ entry.author }}{% endif -%}
 {% if entry.author and entry.published_utc %} {% endif -%}
@@ -26,7 +26,7 @@
 {# Display a single feed. -#}
 {{ indent }}{{ header(feed.title, '-', feed_indent) -}}
 {% for e in feed.visible_new_entries %}
-{{ entry_indent }}{{ e.title }} {{ author_date(e, context) }}
+{{ entry_indent }}{{ e.title }} {{ author_date(e) }}
 {{ entry_indent }}{{ e.link }}
 {% endfor %}
 {% if feed.invisible_new_entries_count > 0 -%}
