@@ -1,3 +1,4 @@
+{% block header %}{% endblock -%}
 {% block intro -%}
 Hi {{ context.config.profile_user_name or context.profile_name }},
 
@@ -11,3 +12,4 @@ This is your RSS feed digest for {{ context.local_format(context.update_time_utc
 {{ context.other_feeds_count }} feed{% if context.other_feeds_count == 1 %} has{% else %}s have{% endif %} no new or updated posts since your last update.
 {% endif -%}
 {% endblock -%}
+{% block footer %}{% endblock -%}

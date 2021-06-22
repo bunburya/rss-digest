@@ -1,0 +1,72 @@
+{% extends "_base.jinja2" %}
+{% block header %}
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <style>
+{% include "_html_css.jinja2" %}
+    </style>
+</head>
+<body>
+{% endblock %}
+
+{% block entries %}
+    {% for c in ctx.updated_categories %}
+
+    <div class="category_container">
+
+        <div class="category_title"><b>
+            {% if c.name is none %} [Uncategorised] {% else %} {{ c.name }} {% endif %}
+        </b></div>
+
+        {% for f in c.visible_updated_feeds %}
+            <div class="feed_title">
+                <b><a href="{{ f.url }}">{{ f.title }}</a></b> - {{ f.all_new_entries_count }}
+                new entr{{ 'ies' if f.all_new_entries_count > 1 else 'y' }}
+            </div>
+
+            {% for e in f.visible_new_entries %}
+
+            <div class="entry">
+                <a href="{{ e.link }}" style="color: rgb(140, 60, 60);">
+                {{ e.title }}</a> (submitted by {{ e.author }}
+                on {{ ctx.local_format(e.last_updated_utc) }})
+            </div>
+
+            {% endfor %}
+
+            {% if feed.invisible_new_entries_count > 0 -%}
+
+            <div class="more_entries">
+                {{ f.invisible_new_entries_count  }} more new posts
+                at <a href="{{ f.url }}" style="color: rgb(140, 60, 60);">
+                {{ f.title }}</a>
+            </div>
+
+            {% endif %}
+
+        {% endif %}
+        {% endfor %}
+
+    </div>
+
+{% endfor %}
+
+</div>
+
+{% if ctx.other_feeds_count > 0 %}
+<p>
+    {% if ctx.other_feeds_count == 1 %}
+        {{ ctx.other_feeds[0].title }} has no new entries.
+    {% else %}
+        {{ ctx.other_feeds_count }} of your subscribed feeds have no new
+        entries since your last update: {{ ctx.other_feeds_titles | join("; ") }}
+    {% endif %}
+</p>
+{% endif %}
+
+{% endblock%}
+{% block footer %}
+</body>
+</html>
+{% endblock %}
