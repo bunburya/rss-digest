@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-#  html_generator.py
+
+from __future__ import annotations
 
 import logging
 
@@ -11,31 +11,34 @@ from datetime import datetime
 
 from jinja2 import Environment, BaseLoader, select_autoescape, TemplateNotFound
 from jinja2.exceptions import TemplateNotFound
+from rss_digest.profile import Profile
+from rss_digest.rss_digest import RSSDigest
+
 
 class TemplateLoader(BaseLoader):
     """A custom Jinja2 Loader class that first checks whether a specific
     profile has defined a custom template and, if not, uses a default
-    template as a fallback."""
+    template as a fallback.
+
+    """
     
-    def __init__(self, html_generator, fallback_template_dir,
-                    *args, **kwargs):
-        self.html_generator = html_generator
+    def __init__(self, output_generator: OutputGenerator, fallback_template_dir: str):
+        self.output_generator = output_generator
         self.fallback_template_dir = fallback_template_dir
         self.profile = None
-        BaseLoader.__init__(self, *args, **kwargs)
+        BaseLoader.__init__(self)
     
     def get_source(self, environment, name):
-        logging.info('Loading template "{}".'.format(name))
+        logging.info(f'Loading template "{name}".')
         fpath = None
         if self.profile:
             user_fpath = join(self.profile.template_dir, name)
             if exists(user_fpath):
                 fpath = user_fpath
-                logging.info('Loading user-specific template at %s.', fpath)
+                logging.info(f'Loading user-specific template at {fpath}.')
         if fpath is None:
             fpath = join(self.fallback_template_dir, name)
-            logging.info('No user-specific template found.  '
-                            'Using fallback at %s.', fpath)
+            logging.info(f'No user-specific template found. Using fallback at {fpath}.')
         try:
             with open(fpath) as f:
                 # The last returned value should be a function that
@@ -43,32 +46,27 @@ class TemplateLoader(BaseLoader):
                 # be reloaded.  We always say it is up to date.
                 return f.read(), fpath, lambda: True
         except FileNotFoundError:
-            logging.critical('Failed to load template at %s.', fpath)
+            logging.critical(f'Failed to load template at {fpath}.')
             raise TemplateNotFound(name)
     
 
-class HTMLGenerator:
+class OutputGenerator:
     
-    def __init__(self, app):
+    def __init__(self, app: RSSDigest):
         logging.info('Initialising HTMLGenerator.')
         self.app = app
         self.global_config = app.config
-        self.template_loader = TemplateLoader(self,
-                                self.global_config.template_dir)
+        self.template_loader = TemplateLoader(self.global_config.template_dir)
         self.jinja_env = Environment(
             loader=self.template_loader,
             autoescape=select_autoescape(['html']))
 
-    def generate_html(self, profile):
+    def generate_output(self, profile: Profile):
         """Generate HTML for email (or, conceivably, output in some other
         form, eg, non-HTML email, HTML for a webpage, etc)."""
-        # TODO:  Have this function take profile as an arg, rather than
-        # initialising class with profile, so that one instance can be
-        # used to generate the output for multiple profiles.
+
+        logging.info(f'Generating output for profile: {profile.name}.')
         
-        logging.info('Generating output for profile %s.', profile.name)
-        
-        feed_handler = profile.feed_handler
         feedlist = profile.feedlist
         
         gen_date = datetime.now().strftime(profile.get_conf('date_format'))
@@ -101,8 +99,8 @@ class HTMLGenerator:
             'gen_date': gen_date,
             'gen_time': gen_time,
             'new_entries_total': feed_handler.new_entries_total,
-            'updated_feeds_count': len(feed_handler.updated_feeds),
-            'subscribed_feeds_count': len(feed_handler.feeds),
+            'updated_feeds_count': len(feed_handler.all_updated_feeds),
+            'subscribed_feeds_count': len(feed_handler.categories),
             'new_entries_count': feed_handler.new_entries_count,
             'get_author': feed_handler.get_author,
             'get_date': lambda e: feed_handler.get_entry_date(e,

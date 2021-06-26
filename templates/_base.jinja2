@@ -1,0 +1,16 @@
+{# This file sets out the general structure of rss-digest output and contains some content and macros common to most templates. -#}
+{% block header %}{% endblock -%}
+{% block intro -%}
+Hi {{ ctx.config.profile_user_name or ctx.profile_name }},
+
+This is your RSS feed digest for {{ ctx.local_format(ctx.update_time_utc) }}.
+
+{% if ctx.last_update_utc is none %}There{% else %}Since your last update on {{ ctx.local_format(ctx.update_time_utc) }}, there{% endif %} ha{{ 's' if ctx.updated_feeds_count == 1 else 've' }} been {{ ctx.updated_entries_count }} new or updated post{{ 's' if ctx.updated_entries_count > 1 }} to {{ ctx.updated_feeds_count }} of your {{ ctx.subscribed_feeds_count }} subscribed feeds.
+{% endblock -%}
+{% block entries %}{% endblock -%}
+{% block epilogue -%}
+{% if ctx.other_feeds_count > 0 -%}
+{{ ctx.other_feeds_count }} feed{% if ctx.other_feeds_count == 1 %} has{% else %}s have{% endif %} no new or updated posts since your last update.
+{% endif -%}
+{% endblock -%}
+{% block footer %}{% endblock -%}

@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys
+
+from rss_digest.cli import CLI, get_arg_parser
+
+def main():
+    cli = CLI()
+    parser = get_arg_parser(cli)
+    ns = parser.parse_args(sys.argv[1:])
+    cli.configure(ns)
+    ns.func(ns)
+    #try:
+    #    ns.func(ns)
+    #except AttributeError:
+    #    parser.print_help()
+
+    
+if __name__ == '__main__':
+    main()

@@ -1,5 +1,0 @@
-# Just throwing this together as I go along so I don't forget dependencies
-# if / when I ever release / deploy.
-
-jinja2 (ArchLinux: python-jinja)
-feedparser (ArchLinux: python-feedparser)

@@ -2,13 +2,13 @@ import logging
 
 from os.path import exists
 
-class CLInterface:
-    """A very simple CLI for adding profiles and feeds."""
+class TUInterface:
+    """A very simple terminal user interface for adding profiles and feeds."""
     
     def __init__(self, app):
         self.app = app
         print('Welcome to RSS Digest.')
-        if not exists(self.app.config.email_data_file):
+        if not exists(self.app._config.email_data_file):
             print('No email.json file found.  Add details of how RSS Digest is to send emails.')
             self.set_email_data()
         self.repl()
@@ -41,7 +41,7 @@ class CLInterface:
             'username': username,
             'password': password
             }
-        self.app.config.save_email_data(data)
+        self.app._config.save_email_data(data)
         
     def add_feed(self, profile=None):
         if profile is None:
@@ -55,7 +55,7 @@ class CLInterface:
             title = input('Enter feed title: ')
             url = input('Enter feed URL: ')
             category = input('Enter category (blank for no category): ') or None
-            p.add_feed(title, url, posn=-1, save=False, category=category)
+            p.add_feed(url, title, category=category)
             again = input('Add another? (y/N) ')
             if not again.lower().startswith('y'):
                 save_and_quit = True
@@ -80,7 +80,7 @@ class CLInterface:
                 print('You need to enter both a name and an email.')
         profile = self.app.new_profile(name, email)
         print('Profile {} added.  Now add some feeds.'.format(name))
-        self.add_feed(profile.name)
+        self.add_feed(profile.title)
     
     def email_profile(self):
         name = self.force_input('Enter profile name: ',
@@ -111,7 +111,7 @@ class CLInterface:
         name = self.force_input('Enter profile name: ',
                                 'You need to enter a profile name.')
         profile = self.app.get_profile(name)
-        self.app.email_handler.test_email(profile)
+        self.app.email_sender.test_email(profile)
     
     def print_cmds(self):
         print('Commands (none of these take arguments; you will be prompted for input after entering the commands):')
