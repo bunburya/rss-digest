@@ -20,7 +20,7 @@ class OutputGenerator:
         self._jinja_env = Environment(loader=FileSystemLoader(app_config.templates_dir))
 
     def generate(self, template: str, context: Context) -> str:
-        return self._jinja_env.get_template(template).render(context=context)
+        return self._jinja_env.get_template(template).render(ctx=context)
 
 
 class OutputSender:

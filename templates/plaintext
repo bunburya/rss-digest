@@ -1,8 +1,8 @@
 {% extends "_base.jinja2" -%}
 {% import '_plaintext_macros.jinja2' as m -%}
 {% block entries -%}
-{% if context.has_categories -%}
-{% for c in context.updated_categories -%}
+{% if ctx.has_categories -%}
+{% for c in ctx.updated_categories -%}
 {{ m.display_category(c, '', '  ', '    ') -}}
 {% endfor -%}
 {% else -%}
