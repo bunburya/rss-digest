@@ -214,9 +214,6 @@ class FeedResult:
         entries to display.
 
         """
-        print(f'all: {self.all_new_entries_count}')
-        print(f'visible: {self.visible_new_entries_count}')
-        print(f'invisible: {self.all_new_entries_count - self.visible_new_entries_count}')
         return self.all_new_entries_count - self.visible_new_entries_count
 
 

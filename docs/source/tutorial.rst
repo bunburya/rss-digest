@@ -101,8 +101,8 @@ A number of templates are provided with rss-digest. These are:
 
 * ``plaintext``: To generate output as plain text.
 * ``html``: To generate output as HTML.
-* ``markdown``: To generate output as markdown.
-* ``rss``: To generate an RSS file with all updated entries.
+* ``markdown``: To generate output as markdown. (Not yet implemented)
+* ``rss``: To generate an RSS file with all updated entries. (Not yet implemented)
 
 It's also possible to create your own templates provided you have a little knowledge of Python and Jinja2. Consult the
 `Jinja2 template design documentation <https://jinja2docs.readthedocs.io/en/stable/templates.html>`_ for help on how to
