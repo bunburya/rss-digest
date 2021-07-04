@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<opml version="2.0">
+  <head/>
+  <body>
+    <outline type="rss" text="Liberty Street Economics" title="Liberty Street Economics" xmlUrl="http://feeds.feedburner.com/LibertyStreetEconomics"/>
+    <outline type="rss" text="Critical Macro Finance" title="Critical Macro Finance" xmlUrl="https://criticalfinance.org/feed/"/>
+    <outline type="rss" text="Bank Underground" title="Bank Underground" xmlUrl="https://bankunderground.co.uk/feed/"/>
+    <outline type="rss" text="Musings on Markets" title="Musings on Markets" xmlUrl="http://aswathdamodaran.blogspot.com/feeds/posts/default"/>
+    <outline type="rss" text="CLS Blue Sky Blog" title="CLS Blue Sky Blog" xmlUrl="http://feeds.feedburner.com/cls-blue-sky-blog"/>
+    <outline text="Credit Slips" xmlUrl="https://feeds.feedburner.com/creditslips/feed" title="Credit Slips" type="rss"/>
+    <outline type="rss" text="Above the Law" title="Above the Law" xmlUrl="https://abovethelaw.com/feed/"/>
+    <outline type="rss" text="The Biglaw Investor" title="The Biglaw Investor" xmlUrl="https://www.biglawinvestor.com/feed/"/>
+    <outline type="rss" text="mapmyrun blog - Running" title="mapmyrun blog - Running" xmlUrl="https://blog.mapmyrun.com/category/running/feed"/>
+    <outline type="rss" text="Runtastic" title="Runtastic" xmlUrl="https://www.runtastic.com/blog/en/feed"/>
+  </body>
+</opml>
