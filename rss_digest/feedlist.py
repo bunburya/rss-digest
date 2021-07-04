@@ -166,7 +166,7 @@ class FeedCategory:
         return bool(self.feeds)
 
 def _category_dict_factory():
-    return OrderedDict(((None, []),))
+    return OrderedDict(((None, FeedCategory()),))
 
 @dataclass
 class FeedList:

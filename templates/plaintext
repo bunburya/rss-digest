@@ -1,3 +1,5 @@
+{# Plain text output template for rss-digest -#}
+{# Note: Because this is plaintext, newlines and indentation will be rendered faithfully. -#}
 {% extends "_base.jinja2" -%}
 {% import '_plaintext_macros.jinja2' as m -%}
 {% block entries -%}
