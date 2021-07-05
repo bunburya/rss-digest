@@ -39,7 +39,7 @@ Configuration
 When installed, rss-digest will create a directory called ``rss-digest`` within the relevant user's general application
 configuration directory. This is determined using the `appdirs <https://pypi.org/project/appdirs/>`_ library and will
 depend on which operating system you are using. For example, on many Linux systems, the directory will be created at
-``$HOME/.config/rss-digest``.
+``$HOME/.config/rss-digest/``.
 
 Within this directory you will find the following:
 
@@ -55,6 +55,9 @@ Within this directory you will find the following:
    profile-specific files will override the global configuration.
 
 #. A directory named ``templates``, which contains the templates used by rss-digest to generate output (see below).
+
+rss-digest also stores state (eg, information about previously fetched feeds) in an appropriate directory, again
+determined by ``appdirs``. For example, on a Linux system this may be ``$HOME/.local/share/rss-digest/``.
 
 Adding and configuring a profile
 --------------------------------
