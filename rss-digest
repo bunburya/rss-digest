@@ -10,11 +10,11 @@ def main():
     parser = get_arg_parser(cli)
     ns = parser.parse_args(sys.argv[1:])
     cli.configure(ns)
-    ns.func(ns)
-    #try:
-    #    ns.func(ns)
-    #except AttributeError:
-    #    parser.print_help()
+    #ns.func(ns)
+    try:
+        ns.func(ns)
+    except AttributeError:
+        parser.print_help()
 
     
 if __name__ == '__main__':

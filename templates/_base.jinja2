@@ -7,10 +7,12 @@ This is your RSS feed digest for {{ ctx.local_format(ctx.update_time_utc) }}.
 
 {% if ctx.last_update_utc is none %}There{% else %}Since your last update on {{ ctx.local_format(ctx.update_time_utc) }}, there{% endif %} ha{{ 's' if ctx.updated_feeds_count == 1 else 've' }} been {{ ctx.updated_entries_count }} new or updated post{{ 's' if ctx.updated_entries_count > 1 }} to {{ ctx.updated_feeds_count }} of your {{ ctx.subscribed_feeds_count }} subscribed feeds.
 {% endblock -%}
-{% block entries %}{% endblock -%}
+{% block entries %}MUST BE OVERRIDDEN IN CHILD TEMPLATE{% endblock -%}
 {% block epilogue -%}
-{% if ctx.other_feeds_count > 0 -%}
-{{ ctx.other_feeds_count }} feed{% if ctx.other_feeds_count == 1 %} has{% else %}s have{% endif %} no new or updated posts since your last update.
+{% if ctx.other_feeds_count == 1 -%}
+{{ ctx.other_feeds[0].title }} has no new entries.
+{% elif ctx.other_feeds_count > 1 -%}
+{{ ctx.other_feeds_count }} of your subscribed feeds have no new entries since your last update: {{ ctx.other_feeds_titles | join("; ") }}.
 {% endif -%}
 {% endblock -%}
 {% block footer %}{% endblock -%}

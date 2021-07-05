@@ -1,0 +1,21 @@
+{# Markdown output template for rss-digest. -#}
+{% extends "_base.jinja2" -%}
+{% from '_common_macros.jinja2' import author_date -%}
+{% block header %}# RSS digest
+{% endblock %}
+{# Note: Be careful about indentation here as markdown will interpret 4+ space indents as a preformatted block -#}
+{% block entries -%}
+{% for c in ctx.updated_categories -%}
+ ## {% if c.name is none %} [Uncategorised] {% else %} {{ c.name }} {% endif %}
+ {% for f in c.visible_updated_feeds %}
+  ### [{{ f.title }}]({{ f.url }}) - {{ f.all_new_entries_count }} new entr{{ 'ies' if f.all_new_entries_count > 1 else 'y' }}
+  {% for e in f.visible_new_entries -%}
+   * [{{ e.title }}]({{ e.link }}) {{ author_date(e) }}
+  {% endfor -%}
+  {% if f.invisible_new_entries_count > 0 %}
+   {{ f.invisible_new_entries_count }} more new posts at [{{ f.title }}]({{ f.url }})
+  {% endif -%}
+ {% endfor %}
+{% endfor %}
+{% endblock %}
+

@@ -1,3 +1,4 @@
+{# HTML output template for rss-digest. -#}
 {% extends "_base.jinja2" %}
 {% from '_common_macros.jinja2' import author_date -%}
 {% block header %}
@@ -43,16 +44,6 @@
     </div>
 {% endfor %}
 </div>
-{% if ctx.other_feeds_count > 0 -%}
-<p>
-    {% if ctx.other_feeds_count == 1 -%}
-        {{ ctx.other_feeds[0].title }} has no new entries.
-    {% else -%}
-        {{ ctx.other_feeds_count }} of your subscribed feeds have no new
-        entries since your last update: {{ ctx.other_feeds_titles | join("; ") }}
-    {% endif -%}
-</p>
-{% endif -%}
 {% endblock -%}
 {% block footer -%}
 </body>
