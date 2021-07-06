@@ -16,6 +16,8 @@ import appdirs
 from rss_digest.exceptions import BadConfigurationError
 from rss_digest.metadata import APP_NAME
 
+logger = logging.getLogger(__name__)
+
 
 def load_json(fpath, empty_type=dict):
     try:
@@ -88,9 +90,9 @@ class BaseConfig:
         # Only load output.ini when we need it
         self._output_config: Optional[ConfigParser] = None
 
-        logging.debug(f'{self.__class__.__name__} initialised.')
-        logging.debug(f'Main config file: {self.main_config_file}')
-        logging.debug(f'Output config file: {self.output_config_file}')
+        logger.debug(f'{self.__class__.__name__} initialised.')
+        logger.debug(f'Main config file: {self.main_config_file}')
+        logger.debug(f'Output config file: {self.output_config_file}')
 
     @property
     def output_config(self) -> ConfigParser:
@@ -113,20 +115,20 @@ class BaseConfig:
         :return: The requested value, as the correct datatype.
 
         """
-        logging.debug(f'Searching for config option "{key}" in section "{section}".')
+        logger.debug(f'Searching for config option "{key}" in section "{section}".')
         raw_val = conf.get(section, key, fallback=None)
         if raw_val is not None:
             to_type = types[key]
-            logging.debug(f'Found value "{raw_val}"; converting to {to_type}.')
+            logger.debug(f'Found value "{raw_val}"; converting to {to_type}.')
             try:
                 val = to_type(raw_val)
             except (TypeError, ValueError) as e:
-                logging.debug("Received exception when converting.")
+                logger.debug("Received exception when converting.")
                 if not raw_val:
                     # We can't convert the value (eg, to an int) because it is an empty string, which probably means
                     # the key is present in the INI file but no value is specified. Treat this as equivalent to the
                     # value not being present.
-                    logging.debug('Value not set.')
+                    logger.debug('Value not set.')
                     val = fallback
                 else:
                     # Value has been defined, but we can't convert it to the appropriate type. Raise an error.
@@ -134,7 +136,7 @@ class BaseConfig:
                                                 f'"{to_type}".')
 
         else:
-            logging.debug('Value not found.')
+            logger.debug('Value not found.')
             val = fallback
         return val
 
@@ -269,13 +271,13 @@ class ProfileConfig(BaseConfig):
         :return: The specified value, as the correct datatype.
 
         """
-        logging.debug(f'Getting main config value "{key}" for profile "{self.profile_name}".')
+        logger.debug(f'Getting main config value "{key}" for profile "{self.profile_name}".')
         val = super().get_main_config_value(key)
         if val is None:
-            logging.debug('Not found in profile config; searching app config.')
+            logger.debug('Not found in profile config; searching app config.')
             val = self.app_config.get_main_config_value(key)
         else:
-            logging.debug(f'Value is "{val}".')
+            logger.debug(f'Value is "{val}".')
         return val
 
     def get_output_config_value(self, section: str, key: str) -> Any:

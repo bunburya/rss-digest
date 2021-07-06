@@ -15,15 +15,15 @@ from typing import Optional, List, OrderedDict as OrderedDictType, Any, Union, D
 
 from rss_digest.exceptions import BadOPMLError, CategoryExistsError, FeedExistsError
 
+logger = logging.getLogger(__name__)
+
 try:
     from lxml.etree import ElementTree, SubElement, Element, parse, tostring
-
     has_lxml = True
 except ImportError:
-    logging.warning('lxml not installed.  Using Python\'s standard ElementTree library.  '
+    logger.warning('lxml not installed.  Using Python\'s standard ElementTree library.  '
                     'Written OPML files will not have pretty formatting.')
     from xml.etree.ElementTree import ElementTree, SubElement, Element, parse, tostring
-
     has_lxml = False
 
 
@@ -79,7 +79,7 @@ class Feed:
         elif 'title' in attr:
             title = attr['title']
         else:
-            logging.warning('RSS outline element has neither "text" nor "title" attribute.')
+            logger.warning('RSS outline element has neither "text" nor "title" attribute.')
             title = ''
         return Feed(title=title, xml_url=attr['xmlUrl'], category=category)
 
@@ -95,13 +95,24 @@ class FeedCategory:
     def feed_urls(self) -> List[str]:
         return [f.xml_url for f in self.feeds]
 
-    def add_feed(self, feed: Feed, index: Optional[int] = None):
+    def add_feed(self, feed: Feed, index: Optional[int] = None) -> bool:
+        """Add a feed to the category.
+
+        :param feed: The :class:`Feed` object to add.
+        :param index: The index at which to insert the feed. If not given, append feed to end.
+        :return: Whether the feed was successfully added.
+
+        """
         if feed.xml_url in self.feed_urls:
-            raise FeedExistsError(f'Feed with URL "{feed.title}" already exists in category "{self.name}".')
+            logger.error(f'Could not add feed with title "{feed.title} and URL "{feed.xml_url} to category "{self.name}'
+                         f' because a feed with that URL already exists.')
+            return False
+            #raise FeedExistsError(f'Feed with URL "{feed.xml_url}" already exists in category "{self.name}".')
         if index is None:
             self.feeds.append(feed)
         else:
             self.feeds.insert(index, feed)
+        return True
 
     def extend(self, other: FeedCategory):
         self.feeds.extend(other.feeds)
@@ -147,7 +158,7 @@ class FeedCategory:
             elif outline_type == 'rss':
                 feeds.append(Feed.from_opml(child, category=category))
             else:
-                logging.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
+                logger.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
         return feeds
 
     @classmethod
@@ -217,7 +228,7 @@ class FeedList:
 
         """
         query = FeedSearch(feed_title, feed_url, category)
-        logging.debug(f'Deleting feeds matching {query}')
+        logger.debug(f'Deleting feeds matching {query}')
         empty_categories = []
         if category is not WILDCARD:
             to_search = [category]
@@ -225,13 +236,13 @@ class FeedList:
             to_search = self.categories
         removed = 0
         for category in to_search:
-            #logging.debug(f'Removing matching feeds from {category}.')
+            #logger.debug(f'Removing matching feeds from {category}.')
             removed += self.categories[category].remove_feeds(query)
-            #logging.debug(f'Size of category is not {len(self.feeds[category])}')
+            #logger.debug(f'Size of category is not {len(self.feeds[category])}')
             if (not self.categories[category]) and (category is not None):
-                logging.debug(f'Category "{category}" is empty; removing.')
+                logger.debug(f'Category "{category}" is empty; removing.')
                 empty_categories.append(category)
-        logging.debug(f'Removed {removed} feeds.')
+        logger.debug(f'Removed {removed} feeds.')
         for category in empty_categories:
             self.remove_category(category)
 
@@ -361,9 +372,10 @@ def from_opml(elem: Element, **kwargs) -> FeedList:
             else:
                 categories[name] = category
         elif outline_type == 'rss':
-            categories[None].add_feed(Feed.from_opml(child))
+            to_add = Feed.from_opml(child)
+            categories[None].add_feed(to_add)
         else:
-            logging.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
+            logger.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
 
     return FeedList(categories=categories, title=title, date_modified=date_modified, **kwargs)
 
@@ -380,10 +392,10 @@ def from_opml_file(fpath: str) -> FeedList:
     try:
         tree = parse(fpath)
         feedlist = from_opml(tree.getroot(), opml_file=fpath)
-        logging.info(f'Loaded feed list from OPML file {fpath}.')
+        logger.info(f'Loaded feed list from OPML file {fpath}.')
         return feedlist
     # Python's standard ElementTree throws a FileNotFoundError
     # here; lxml throws an OSError.
     except (FileNotFoundError, OSError):
-        logging.info(f'OPML file not found at "{fpath}"; new file will be created on save.')
+        logger.info(f'OPML file not found at "{fpath}"; new file will be created on save.')
         return FeedList()

@@ -13,8 +13,8 @@ from reader import Reader, make_reader, FeedExistsError as reader_FeedExistsErro
 from rss_digest.config import ProfileConfig
 from rss_digest.exceptions import FeedExistsError, FeedError
 from rss_digest.feedlist import FeedList, from_opml_file, WILDCARD
-from rss_digest.model_utils import entry_result_from_reader, feed_result_from_reader, category_result_from_dicts
-from rss_digest.models import CategoryResult, FeedResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -79,7 +79,7 @@ class Profile:
         :return: The modified Reader object.
 
         """
-        logging.info(f'Syncing OPML file with reader database for profile {self.name}.')
+        logger.info(f'Syncing OPML file with reader database for profile {self.name}.')
         feedlist = self.feedlist
         reader = self.reader
         opml_urls = {f.xml_url for f in feedlist}
@@ -94,7 +94,7 @@ class Profile:
             if url not in reader_urls:
                 reader.add_feed(url)
                 added += 1
-        logging.debug(f'Removed {removed} feeds and added {added} feeds.')
+        logger.debug(f'Removed {removed} feeds and added {added} feeds.')
         return reader
 
     def add_feed(self, feed_url: str, feed_title: str, category: Optional[str] = None,
@@ -184,12 +184,12 @@ class Profile:
         self.sync_reader()
         for (url, value) in self.reader.update_feeds_iter():
             if isinstance(value, UpdatedFeed):
-                logging.info(f'Got updated feed for {url} with {value.new} new entries '
+                logger.info(f'Got updated feed for {url} with {value.new} new entries '
                              f'and {value.updated} updated entries.')
                 if value.new:
                     updated_urls.add(url)
             elif isinstance(value, ReaderError):
-                logging.error(f'Got error when updating {url}')
+                logger.error(f'Got error when updating {url}')
                 error_urls.add(url)
         return updated_urls, error_urls
 

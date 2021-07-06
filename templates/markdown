@@ -1,6 +1,6 @@
 {# Markdown output template for rss-digest. -#}
 {% extends "_base.jinja2" -%}
-{% from '_common_macros.jinja2' import author_date -%}
+{% from '_common_macros.jinja2' import author_date with context -%}
 {% block header %}# RSS digest
 {% endblock %}
 {# Note: Be careful about indentation here as markdown will interpret 4+ space indents as a preformatted block -#}
