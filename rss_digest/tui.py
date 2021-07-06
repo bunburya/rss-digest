@@ -1,6 +1,9 @@
 import logging
 
 from os.path import exists
+from getpass import getpass
+
+logger = logging.getLogger(__name__)
 
 class TUInterface:
     """A very simple terminal user interface for adding profiles and feeds."""
@@ -22,7 +25,6 @@ class TUInterface:
         return response
        
     def set_email_data(self):
-        data = {}
         author = input('Who should emails from RSS Digest appear as coming from '
                         '(default is "RSSDigest")? ') or 'RSSDigest'
         email = self.force_input('Email address from which emails are sent:',
@@ -32,7 +34,7 @@ class TUInterface:
         smtp_port = input('SMTP port (default is 587): ') or 587
         username = input('Email username (default is the email address): ') or email
         password = self.force_input('Email password (this is stored as plaintext): ',
-                                'Your password is required.', getpass)
+                                    'Your password is required.', getpass)
         data = {
             'author': author,
             'email': email,
@@ -102,7 +104,7 @@ class TUInterface:
         html = self.app.get_output_for_profile(profile)
         with open(outfile, 'w') as f:
             f.write(html)
-        logging.info('Output for profile %s written to file %s.', name,
+        logger.info('Output for profile %s written to file %s.', name,
                         outfile)
         #profile.update_last_updated()
         #profile.feed_handler.save()

@@ -1,6 +1,6 @@
 {# HTML output template for rss-digest. -#}
 {% extends "_base.jinja2" %}
-{% from '_common_macros.jinja2' import author_date -%}
+{% from '_common_macros.jinja2' import author_date with context -%}
 {% block header %}
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>

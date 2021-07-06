@@ -5,7 +5,7 @@ import argparse
 from typing import Optional
 
 from rss_digest.config import AppConfig
-from rss_digest.exceptions import ProfileNotFoundError, FeedExistsError, FeedError, ProfileExistsError
+from rss_digest.exceptions import ProfileNotFoundError, FeedError, ProfileExistsError
 from rss_digest.rss_digest import RSSDigest
 from rss_digest.metadata import APP_NAME
 
@@ -50,7 +50,7 @@ class CLI:
 
         """
         if args.debug:
-            logging.getLogger().setLevel(logging.INFO)
+            logging.basicConfig(level=logging.INFO)
         args_dict = vars(args)
         self._config = AppConfig(
             args_dict['config_dir'],

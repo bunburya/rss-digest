@@ -5,7 +5,6 @@ when generating output.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from datetime import datetime, tzinfo
 from typing import Optional, List, Generator

@@ -1,5 +1,5 @@
 {# This file contains some macros that are used when generating plaintext output. -#}
-{% from '_common_macros.jinja2' import author_date -%}
+{% from '_common_macros.jinja2' import author_date with context -%}
 
 {% macro header(text, char, indent='') -%}
 {# Generate a header from text by placing a line of chars directly underneath it. -#}

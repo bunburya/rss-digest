@@ -11,12 +11,13 @@ from rss_digest.exceptions import BadConfigurationError
 from rss_digest.models import Context
 from rss_digest.profile import Profile
 
+logger = logging.getLogger(__name__)
 
 class OutputGenerator:
     """A class for generating output from jinja2 templates."""
 
     def __init__(self, app_config: AppConfig):
-        logging.info('Initialising OutputGenerator.')
+        logger.info('Initialising OutputGenerator.')
         self._jinja_env = Environment(loader=FileSystemLoader(app_config.templates_dir))
 
     def generate(self, template: str, context: Context) -> str:
@@ -52,7 +53,7 @@ class OutputSender:
         msg['From'] = email.utils.formataddr(from_email)
         msg['Subject'] = f'{name}, your RSS digest email'
 
-        logging.info(f'Attempting to send email to {to_email}.')
+        logger.info(f'Attempting to send email to {to_email}.')
 
         # Connect
         server = smtplib.SMTP(server, port)
@@ -63,7 +64,7 @@ class OutputSender:
         # server.set_debuglevel(True) # show communication with the server
         try:
             server.sendmail(from_email, [to_email], msg.as_string())
-            logging.info('Email sent.')
+            logger.info('Email sent.')
         finally:
             server.quit()
 

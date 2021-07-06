@@ -2,20 +2,32 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import logging
+from typing import Optional
 
 from rss_digest.cli import CLI, get_arg_parser
 
-def main():
+def main() -> Optional[int]:
     cli = CLI()
     parser = get_arg_parser(cli)
     ns = parser.parse_args(sys.argv[1:])
     cli.configure(ns)
-    #ns.func(ns)
     try:
         ns.func(ns)
     except AttributeError:
+        # Script probably called without specifying command. Print help and exit (with error status)
         parser.print_help()
+        return 1
+    except KeyboardInterrupt as e:
+        # Log keyboard interrupt and exit silently
+        logging.exception(e)
+        return 1
+    except BaseException as e:
+        # Some other error was encountered - log it and report to user.
+        logging.exception(e)
+        print('Encountered one or more uncaught exceptions. Check logs for details.')
+        return 1
 
     
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
