@@ -6,6 +6,7 @@
 BASE_DIR="../test_data/run/opml_list_test"
 CONFIG_DIR="$BASE_DIR/config"
 TEMPLATES_DIR="../../templates"
+HELPERS_DIR="../../helpers"
 DATA_DIR="$BASE_DIR/data"
 OUTPUT_DIR="$BASE_DIR/output"
 CONFIG_INI="../../config/config.ini"
@@ -17,6 +18,7 @@ if [ -d "$OUTPUT_DIR" ]; then rm -r "$DATA_DIR"; fi
 
 mkdir -p "$CONFIG_DIR"
 cp -r "$TEMPLATES_DIR" "$CONFIG_DIR/"
+cp -r "$HELPERS_DIR" "$CONFIG_DIR/"
 mkdir -p "$DATA_DIR"
 mkdir -p "$OUTPUT_DIR"
 

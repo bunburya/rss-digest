@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, tzinfo
+from types import ModuleType
 from typing import Optional, List, Generator
 
 try:
@@ -141,6 +142,7 @@ class ConfigContext:
     profile_user_name: Optional[str]  #: The user-defined name for the profile.
     max_entries: int  #: The maximum number of entries to display for each feed.
     max_feeds: int  #: The maximum number of feeds to display for each category.
+    helpers: ModuleType  #: A module containing user-defined "helper" Python objects (such as functions).
 
 @dataclass
 class CategoryResult:
