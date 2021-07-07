@@ -185,7 +185,7 @@ class Profile:
         for (url, value) in self.reader.update_feeds_iter():
             if isinstance(value, UpdatedFeed):
                 logger.info(f'Got updated feed for {url} with {value.new} new entries '
-                             f'and {value.updated} updated entries.')
+                            f'and {value.modified} updated entries.')
                 if value.new:
                     updated_urls.add(url)
             elif isinstance(value, ReaderError):

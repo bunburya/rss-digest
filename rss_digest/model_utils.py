@@ -2,6 +2,7 @@
 working with the data classes defined in models.py.
 
 """
+from types import ModuleType
 from typing import List, Optional, Dict
 
 from pytz import timezone
@@ -142,6 +143,7 @@ def config_context_from_configs(app_config: AppConfig, profile_config: ProfileCo
         profile_config.get_main_config_value('name'),
         profile_config.get_main_config_value('max_displayed_entries'),
         profile_config.get_main_config_value('max_displayed_feeds'),
+        app_config.helper_module
     )
 
 

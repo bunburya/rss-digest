@@ -24,6 +24,9 @@
 {% for e in feed.visible_new_entries %}
 {{ entry_indent }}{{ e.title }} {{ author_date(e) }}
 {{ entry_indent }}{{ e.link }}
+{% for content in e.content -%}
+{{ entry_indent }}{{ ctx.config.helpers.html2text(content.value) }}
+{% endfor -%}
 {% endfor %}
 {% if feed.invisible_new_entries_count > 0 -%}
 {{ feed_indent }}{{ feed.invisible_new_entries_count }} more new or updated entries at {{ feed.url }}

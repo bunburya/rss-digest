@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import sys
 import logging
 import os
 import shutil
 from json import dump, load
 from configparser import ConfigParser
+from types import ModuleType
 from typing import Optional, Any, Mapping
+from importlib import import_module
 
 import appdirs
 
@@ -196,6 +199,9 @@ class AppConfig(BaseConfig):
 
         main_config_file = os.path.join(self.config_dir, 'config.ini')
         output_config_file = os.path.join(self.config_dir, 'output.ini')
+
+        self._helper_module: Optional[ModuleType] = None
+
         super().__init__(main_config_file, output_config_file, existing_main_config_file, existing_output_config_file)
 
     def get_profile_config_dir(self, name: str) -> str:
@@ -224,6 +230,14 @@ class AppConfig(BaseConfig):
 
         """
         return ProfileConfig(self, name)
+
+    @property
+    def helper_module(self) -> ModuleType:
+        if self._helper_module is None:
+            sys.path.insert(0, self.config_dir)
+            self._helper_module = import_module('helpers')
+            sys.path.pop(0)
+        return self._helper_module
 
 
 class ProfileConfig(BaseConfig):
