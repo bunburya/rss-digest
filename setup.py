@@ -15,7 +15,9 @@ setup(
     packages=find_packages(),
     scripts=scripts,
     install_requires=['reader', 'jinja2', 'appdirs', 'lxml', 'lxml-stubs', 'pytest', 'requests', 'sphinx', 'pytz',],
-    package_data={},
+    package_data={
+        'rss_digest': ['resources/templates/*', 'resources/helpers/*']
+    },
     author='bunburya',
     author_email='dev@bunburya.eu',
     description='Generate digests of subscribed RSS and Atom feeds.',

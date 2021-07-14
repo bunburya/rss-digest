@@ -11,11 +11,12 @@ from json import dump, load
 from configparser import ConfigParser
 from types import ModuleType
 from typing import Optional, Any, Mapping
-from importlib import import_module
+from importlib import import_module, resources
 
 import appdirs
 
 # Few helper functions
+
 from rss_digest.exceptions import BadConfigurationError
 from rss_digest.metadata import APP_NAME
 
@@ -203,6 +204,20 @@ class AppConfig(BaseConfig):
         self._helper_module: Optional[ModuleType] = None
 
         super().__init__(main_config_file, output_config_file, existing_main_config_file, existing_output_config_file)
+
+    def create_templates_dir(self):
+        """Create a new directory in the global config directory
+        containing the pre-packaged templates.
+
+        """
+
+        if not os.path.exists(self.templates_dir):
+            os.makedirs(self.templates_dir)
+
+
+
+    def create_config_dir(self):
+        """Create a new config directory and populate it with the """
 
     def get_profile_config_dir(self, name: str) -> str:
         """Get the location of a profile configuration directory.

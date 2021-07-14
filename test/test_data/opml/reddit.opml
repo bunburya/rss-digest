@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<opml version="2.0">
+  <head/>
+  <body>
+    <outline type="category" text="Reddit">
+      <outline type="rss" text="RSS Subreddit" title="RSS Subreddit" xmlUrl="https://www.reddit.com/r/rss.rss"/>
+      <outline type="rss" text="AITA Subreddit" title="AITA Subreddit" xmlUrl="https://www.reddit.com/r/AmITheAsshole.rss"/>
+      <outline type="rss" text="Selfhosted Subreddit" title="Selfhosted Subreddit" xmlUrl="https://www.reddit.com/r/selfhosted.rss"/>
+    </outline>
+  </body>
+</opml>

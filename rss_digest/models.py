@@ -144,6 +144,7 @@ class ConfigContext:
     max_feeds: int  #: The maximum number of feeds to display for each category.
     helpers: ModuleType  #: A module containing user-defined "helper" Python objects (such as functions).
 
+
 @dataclass
 class CategoryResult:
     """A data class representing a category of updated feeds."""
@@ -182,6 +183,7 @@ class CategoryResult:
     def other_feeds_count(self) -> int:
         """The number of feeds that were not updated and did not return an error."""
         return len(self.other_feeds)
+
 
 @dataclass
 class FeedResult:
@@ -233,11 +235,13 @@ class EntryResult:
     content: List[ContentResult]  #: The full content of the entry.
     last_updated_utc: Optional[datetime]  #: When the entry was last updated, in UTC.
 
+
 @dataclass
 class ContentResult:
     """A data class representing a piece of content in an entry."""
 
     value: str  #: The actual content.
+    #value_plaintext: Optional[str]  #: The content, as plaintext (ie, with HTML removed).
     type: Optional[str]  #: The type of the content.
     language: Optional[str]  #: The language of the content.
 
