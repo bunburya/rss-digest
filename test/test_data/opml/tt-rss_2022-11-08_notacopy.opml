@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<opml version="1.0">
+  <head>
+    <dateCreated>Tue, 08 Nov 2022 21:49:43 +0000</dateCreated>
+    <title>Tiny Tiny RSS Feed Export</title>
+  </head>
+  <body>
+    <outline text="Art">
+      <outline type="rss" text="Apollo Magazine" xmlUrl="https://www.apollo-magazine.com/feed" htmlUrl="https://www.apollo-magazine.com"/>
+      <outline type="rss" text="Books | The Guardian" xmlUrl="https://www.theguardian.com/books/rss" htmlUrl="https://www.theguardian.com/books"/>
+    </outline>
+    <outline text="Economics &amp; Law">
+      <outline type="rss" text="Bank Underground" xmlUrl="https://bankunderground.co.uk/feed/" htmlUrl="https://bankunderground.co.uk"/>
+      <outline type="rss" text="CLS Blue Sky Blog" xmlUrl="http://feeds.feedburner.com/cls-blue-sky-blog" htmlUrl="https://clsbluesky.law.columbia.edu"/>
+      <outline type="rss" text="Critical Macro Finance" xmlUrl="https://criticalfinance.org/feed/" htmlUrl="https://criticalfinance.org"/>
+      <outline type="rss" text="Liberty Street Economics" xmlUrl="http://feeds.feedburner.com/LibertyStreetEconomics" htmlUrl="https://libertystreeteconomics.newyorkfed.org"/>
+      <outline type="rss" text="Musings on Markets" xmlUrl="http://aswathdamodaran.blogspot.com/feeds/posts/default" htmlUrl="https://aswathdamodaran.blogspot.com/"/>
+      <outline type="rss" text="Above the Law" xmlUrl="https://abovethelaw.com/feed/" htmlUrl="https://abovethelaw.com"/>
+    </outline>
+    <outline type="rss" text="Bartosz Ciechanowski" xmlUrl="https://ciechanow.ski/atom.xml" htmlUrl="https://ciechanow.ski/"/>
+    <outline type="rss" text="The Pudding" xmlUrl="https://pudding.cool/rss.xml" htmlUrl="https://pudding.cool"/>
+    <outline type="rss" text="Gwern.net Newsletter" xmlUrl="https://www.gwern.net/feed.rss" htmlUrl="https://gwern.substack.com"/>
+    <outline type="rss" text="Maggie Appleton" xmlUrl="https://maggieappleton.com/rss.xml" htmlUrl="https://maggieappleton.com"/>
+  </body>
+</opml>
