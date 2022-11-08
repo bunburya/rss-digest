@@ -35,11 +35,11 @@ class CLI:
             print(f'User name: {profile.user_name}')
             feedlist = self.rss_digest.get_feedlist(profile)
             print('Subscribed feeds:')
-            for category, feeds in feedlist.iter_categories:
-                print(f' Category: {category}')
-                for feed in feeds:
-                    print(f'  Feed: {feed["text"]} ({feed["xmlUrl"]})')
-            print(f'Configuration stored in "{profile.profile_dir}".')
+            for c in feedlist.categories:
+                print(f' Category: {c.name}')
+                for f in c:
+                    print(f' Feed: {f.name} ({f.xml_url})')
+            print(f'Configuration stored in "{profile.config_dir}".')
         except ProfileNotFoundError:
             print(f'Profile "{args.profile_name}" not found.')
 

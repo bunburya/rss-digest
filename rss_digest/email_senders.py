@@ -10,6 +10,8 @@ from email.mime.text import MIMEText
 from rss_digest.config import Config
 from rss_digest.profile import Profile
 
+### Treat as legacy code for now
+
 
 class EmailSender: pass
 
@@ -30,7 +32,7 @@ class BasicEmailSender(EmailSender):
             'username': uname,
             'password': passwd
         }
-        with open(self.email_data_file), as f:
+        with open(self.email_data_file, 'w') as f:
             json.dump(data, f)
 
     def load_email_data(self) -> dict:

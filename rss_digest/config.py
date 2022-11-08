@@ -29,20 +29,34 @@ class Config:
     """A class to control and store global configuration settings."""
 
     def __init__(self, config_dir: Optional[str] = None, data_dir: Optional[str] = None):
-        self.config_dir = config_dir or appdirs.user_config_dir('rss-digest')
 
-        self.profiles_dir = os.path.join(self.config_dir, 'profiles')
-        if not os.path.exists(self.profiles_dir):
-            os.makedirs(self.profiles_dir)
+        # General config directory
+        self.config_dir = config_dir or appdirs.user_config_dir('rss-digest')
+        if not os.path.exists(self.config_dir):
+            os.makedirs(self.config_dir)
+
+        # Directory to store each profile-specific configuration files
+        self.profile_config_dir = os.path.join(self.config_dir, 'profiles')
+        if not os.path.exists(self.profile_config_dir):
+            os.makedirs(self.profile_config_dir)
+
+        # Directory to store profile-specific output templates
         self.templates_dir = os.path.join(self.config_dir, 'templates')
         if not os.path.exists(self.templates_dir):
             os.makedirs(self.templates_dir)
 
+        # Database of existing profiles
         self.profiles_db = os.path.join(self.config_dir, 'profiles.db')
 
+        # General directory for storing application data/state
         self.data_dir = data_dir or appdirs.user_data_dir('rss-digest')
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
+
+        # Directory to store profile-specific state
+        self.profile_data_dir = os.path.join(self.data_dir, 'profiles')
+        if not os.path.exists(self.profile_data_dir):
+            os.makedirs(self.profile_data_dir)
 
 
 
@@ -91,7 +105,7 @@ class UserConfig:
             {'profile': {
                 'user_name': self.profile.name,
                 'email': '',
-                'dir_path': self.profile.profile_dir,
+                'dir_path': self.profile.config_dir,
                 'date_format': '%A %d %B %Y',
                 'time_format': '%H:%M',
                 'datetime_format': '${date_format} at ${time_format}',
@@ -102,7 +116,7 @@ class UserConfig:
     
     def load_config(self, conf_file=None):
         if (conf_file is None) or (not conf_file):
-            conf_file = join(self.profile.profile_dir, 'rss-digest.ini')
+            conf_file = join(self.profile.config_dir, 'rss-digest.ini')
         config = self.get_config()
         try:
             with open(conf_file, 'r') as f:
@@ -115,7 +129,7 @@ class UserConfig:
     
     def save_config(self, conf_file=None):
         if (conf_file is None) or (not conf_file):
-            conf_file = join(self.profile.profile_dir, 'rss-digest.ini')
+            conf_file = join(self.profile.config_dir, 'rss-digest.ini')
         with open(conf_file, 'w') as f:
             self.config.write(f)
     

@@ -8,9 +8,9 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime
 from email.utils import parsedate_to_datetime, format_datetime
-from typing import Optional, List, Generator, Tuple, OrderedDict as OrderedDictType, Any
+from typing import Optional, List
 
-from rss_digest.exceptions import FeedNotFoundError, BadOPMLError, CategoryExistsError
+from rss_digest.exceptions import BadOPMLError, CategoryExistsError
 from rss_digest.profile import Profile
 
 try:
@@ -134,24 +134,37 @@ class FeedCategory:
 
 @dataclass
 class FeedList:
-    """A representation of a list of feeds (optionally sorted into categories)."""
+    """A representation of a list of feeds (optionally sorted into categories).
 
-    feeds: OrderedDictType[Optional[str], FeedCategory]
-    title: Optional[str]
-    date_modified: Optional[datetime]
+    :param category_dict: An ordered dict mapping category names to :class:`FeedCategory` objects. None is used as a key
+        for uncategorised feeds. Where a feed list does not use categories, `feeds` will have a single FeedCategory
+        object, with None as the key.
+    :param title: The title of the feed list (optional).
+    :param date_modified: The date on which the feed list was last modified (optional).
+    :param url_to_feed: A dict mapping each feed's URL to the relevant :class:`Feed` object.
+    """
+
+    category_dict: OrderedDict[Optional[str], FeedCategory] = field(default_factory=OrderedDict)
+    title: Optional[str] = None
+    date_modified: Optional[datetime] = None
+    url_to_feed: dict[str, Feed] = field(default_factory=dict)
+
+    def has_category(self, category: str) -> bool:
+        """Check if this feed list has a category of the given name."""
+        return category in self.category_dict.keys()
 
     def add_category(self, name: str, overwrite: bool = False):
-        if name in self.feeds and not overwrite:
+        if name in self.category_dict and not overwrite:
             raise CategoryExistsError(f'Category with name "{name}" already exists.')
-        self.feeds[name] = FeedCategory(name)
+        self.category_dict[name] = FeedCategory(name)
 
     def remove_category(self, name: str):
-        self.feeds.pop(name)
+        self.category_dict.pop(name)
 
     def add_feed(self, feed_name: str, xml_url: str, category: Optional[str] = None):
-        if not category in self.feeds:
+        if category not in self.category_dict:
             self.add_category(category)
-        self.feeds[category].add_feed(Feed(feed_name, xml_url, category))
+        self.category_dict[category].add_feed(Feed(feed_name, xml_url, category))
 
     def remove_feed(self, feed_name: Optional[str] = WILDCARD, xml_url: Optional[str] = WILDCARD,
                     category: Optional[str] = WILDCARD):
@@ -160,29 +173,31 @@ class FeedList:
         if category is not WILDCARD:
             to_search = category
         else:
-            to_search = self.feeds
+            to_search = self.category_dict
         for category in to_search:
             category.remove_feed(query)
 
     @property
     def category_names(self) -> List[str]:
-        return list(self.feeds.keys())
+        return list(self.category_dict.keys())
 
+    @property
     def categories(self) -> List[FeedCategory]:
-        return list(self.feeds.values())
+        #return list(self.category_dict.values())
+        return [self.category_dict[k] for k in self.category_dict]
 
     def __iter__(self):
         """Iterate through a flattened list of :class:`Feed` objects."""
-        for cat in self.feeds:
-            for feed in self.feeds[cat]:
+        for cat in self.category_dict:
+            for feed in self.category_dict[cat]:
                 yield feed
 
     def to_opml(self) -> 'Element':
-        """Return the FeedList represented as an ``opml.old`` XML element.
+        """Return the FeedList represented as an ``opml`` XML element.
 
         :return: An :class:`Element` object representing the FeedList."""
 
-        opml = Element('opml.old', {'version': '1.0'})
+        opml = Element('opml', {'version': '1.0'})
         head = Element('head')
         opml.append(head)
         body = Element('body')
@@ -197,12 +212,12 @@ class FeedList:
             date_modified.text = format_datetime(self.date_modified)
             head.append(date_modified)
 
-        for category_name in self.feeds:
+        for category_name in self.category_dict:
             if category_name is None:
-                for feed in self.feeds[category_name]:
+                for feed in self.category_dict[category_name]:
                     body.append(feed.to_opml())
             else:
-                body.append(self.feeds[category_name].to_opml())
+                body.append(self.category_dict[category_name].to_opml())
 
         return opml
 
@@ -211,10 +226,10 @@ class FeedList:
         etree.write(fpath)
 
 
-def from_opml(elem: Element) -> FeedList:
-    """Generate a :class:`FeedList` instance from an XML ``opml.old`` element.
+def parse_opml_elem(elem: Element) -> FeedList:
+    """Generate a :class:`FeedList` instance from an XML ``opml`` element.
 
-    :param elem: An :class:`Element` of type ``opml.old``.
+    :param elem: An :class:`Element` of type ``opml``.
     :return: A :class:`FeedList` object of the relevant feeds.
 
     """
@@ -256,19 +271,30 @@ def from_opml(elem: Element) -> FeedList:
         else:
             logging.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
 
-    return FeedList(feeds=feeds, title=title, date_modified=date_modified)
+    return FeedList(category_dict=feeds, title=title, date_modified=date_modified)
 
-def from_opml_file(fpath: str) -> FeedList:
+
+def parse_opml_file(fpath: str) -> FeedList:
+    """Parse the OPML file located at `fpath` and return a :class:`FeedList` object.
+
+    :param fpath: The path to the OPML file to parse.
+    :return: A :class:`FeedList` object containing the relevant feeds.
+    :raises FileNotFoundError: The OPML file cannot be found.
+    :raises BadOPMLError: The given file is not an OPML or contains invalid OPML.
+
+    """
     try:
         tree = parse(fpath)
-        feedlist = from_opml(tree.getroot())
+        feedlist = parse_opml_elem(tree.getroot())
         logging.info(f'Loaded feed list from OPML file {fpath}.')
         return feedlist
     # Python's standard ElementTree throws a FileNotFoundError
     # here; lxml throws an OSError.
     except (FileNotFoundError, OSError):
-        logging.info(f'OPML file not found at "{fpath}"; new file will be created on save.')
+        msg = f'OPML file not found at "{fpath}".'
+        logging.info(msg)
+        raise FileNotFoundError(msg)
 
 
 def get_profile_feedlist(profile: Profile) -> FeedList:
-    return from_opml_file(os.path.join(profile.profile_dir, 'feeds.opml.old'))
+    return parse_opml_file(os.path.join(profile.config_dir, 'feeds.opml'))
