@@ -11,7 +11,6 @@ from email.utils import parsedate_to_datetime, format_datetime
 from typing import Optional, List
 
 from rss_digest.exceptions import BadOPMLError, CategoryExistsError
-from rss_digest.profile import Profile
 
 try:
     from lxml.etree import ElementTree, SubElement, Element, parse, tostring
@@ -95,6 +94,9 @@ class FeedCategory:
         else:
             self.feeds.insert(index, feed)
 
+    def remove_feed(self, query: FeedSearch):
+        self.feeds = list(filter(lambda f: f != query, self.feeds))
+
     def extend(self, other: 'FeedCategory'):
         self.feeds.extend(other.feeds)
 
@@ -171,9 +173,9 @@ class FeedList:
         query = FeedSearch(feed_name, xml_url, category)
         # ???
         if category is not WILDCARD:
-            to_search = category
+            to_search = [self.category_dict[category]]
         else:
-            to_search = self.category_dict
+            to_search = self.categories
         for category in to_search:
             category.remove_feed(query)
 
@@ -294,7 +296,3 @@ def parse_opml_file(fpath: str) -> FeedList:
         msg = f'OPML file not found at "{fpath}".'
         logging.info(msg)
         raise FileNotFoundError(msg)
-
-
-def get_profile_feedlist(profile: Profile) -> FeedList:
-    return parse_opml_file(os.path.join(profile.config_dir, 'feeds.opml'))

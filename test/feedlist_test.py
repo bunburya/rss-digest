@@ -3,18 +3,20 @@ import os
 import unittest
 from typing import Sequence
 
-from rss_digest.feeds import FeedList
+from rss_digest.feeds import FeedList, parse_opml_file
 
-OPML1 = os.path.join('test_data', 'opml.old', 'feeds.opml.old')
-OPML2 = os.path.join('test_data', 'opml.old', 'feeds2.opml.old')
+OPML1 = os.path.join('test_data', 'opml', 'tt-rss_2022-11-08.opml')
+OPML1_copy = os.path.join('test_data', 'opml', 'tt-rss_2022-11-08_copy.opml')
+OPML1_notcopy = os.path.join('test_data', 'opml', 'tt-rss_2022-11-08_notacopy.opml')
 
 
 class FeedListTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.feedlist1 = FeedList.from_opml_file(OPML1)
-        cls.feedlist2 = FeedList.from_opml_file(OPML2)
+        cls.feedlist1 = parse_opml_file(OPML1)
+        cls.feedlist2 = parse_opml_file(OPML1_copy)
+        cls.feedlist3 = parse_opml_file(OPML1_notcopy)
 
     def assertFeedsAre(self, feedlist: FeedList, feeds: Sequence):
         feednames = [f.name for f in feedlist]
@@ -25,29 +27,37 @@ class FeedListTestCase(unittest.TestCase):
 
     def test_01_load(self):
         """Test that the OPML files have been loaded successfully."""
-        self.assertCategoriesAre(self.feedlist1, [None, 'Economics', 'Spanish'])
-        self.assertCategoriesAre(self.feedlist2, [None, 'Economics', 'Law', 'Fitness'])
-        self.assertFeedsAre(self.feedlist1, ['BBC Academy', 'Naked Capitalism', 'Bank Underground', 'El Blog Salmón'])
+        self.assertCategoriesAre(self.feedlist1, [None, 'Art', 'Economics & Law'])
+        self.assertFeedsAre(self.feedlist1,
+                            ['Bartosz Ciechanowski', 'The Pudding', 'Wait But Why', 'Gwern.net Newsletter',
+                             'Maggie Appleton', 'Apollo Magazine', 'Books | The Guardian', 'Bank Underground',
+                             'CLS Blue Sky Blog', 'Credit Slips', 'Critical Macro Finance', 'Liberty Street Economics',
+                             'Musings on Markets', 'Above the Law'])
 
     def test_02_eq(self):
         """Test basic equality of feeds."""
-        self.assertNotEqual(self.feedlist1, self.feedlist2)
+        self.assertEqual(self.feedlist1, self.feedlist2)
         copy = dataclasses.replace(self.feedlist1)
         self.assertEqual(self.feedlist1, copy)
+        self.assertNotEqual(self.feedlist1, self.feedlist3)
 
     def test_03_add_feed(self):
         """Test adding of feeds."""
         # Add to an existing category
-        self.feedlist1.add_feed('Liberty Street Economics', 'http://feeds.feedburner.com/LibertyStreetEconomics',
-                                category='Economics')
+        self.feedlist1.add_feed('Test Feed 1', 'http://test.example.org/feed1',
+                                category='Economics & Law')
         # Add to no category
-        self.feedlist1.add_feed('Runtastic', 'https://www.runtastic.com/blog/en/feed')
+        self.feedlist1.add_feed('Test Feed 2', 'http://test.example.org/feed2')
         # Add to a new category
-        self.feedlist1.add_feed('Above the Law', 'https://abovethelaw.com/feed/',
-                                category='Law')
-        self.assertCategoriesAre(self.feedlist1, [None, 'Economics', 'Spanish', 'Law'])
-        self.assertFeedsAre(self.feedlist1, ['BBC Academy', 'Runtastic', 'Naked Capitalism', 'Bank Underground',
-                                             'Liberty Street Economics', 'El Blog Salmón', 'Above the Law'])
+        self.feedlist1.add_feed('Test Feed 3', 'http://test.example.org/feed3',
+                                category='Test Category')
+        self.assertCategoriesAre(self.feedlist1, [None, 'Art', 'Economics & Law', 'Test Category'])
+        self.assertFeedsAre(self.feedlist1,
+                            ['Bartosz Ciechanowski', 'The Pudding', 'Wait But Why', 'Gwern.net Newsletter',
+                             'Maggie Appleton', 'Test Feed 2', 'Apollo Magazine', 'Books | The Guardian',
+                             'Bank Underground', 'CLS Blue Sky Blog', 'Credit Slips', 'Critical Macro Finance',
+                             'Liberty Street Economics', 'Musings on Markets', 'Above the Law', 'Test Feed 1',
+                             'Test Feed 3'])
 
     def test_03_del_feed(self):
         """Test deletion of feeds."""
@@ -55,7 +65,11 @@ class FeedListTestCase(unittest.TestCase):
         self.feedlist2.remove_feed(feed_name='Liberty Street Economics')
         # Remove by URL
         self.feedlist2.remove_feed(xml_url='https://criticalfinance.org/feed/')
-        # Remove by
+        self.assertFeedsAre(self.feedlist2,
+                            ['Bartosz Ciechanowski', 'The Pudding', 'Wait But Why', 'Gwern.net Newsletter',
+                             'Maggie Appleton', 'Apollo Magazine', 'Books | The Guardian', 'Bank Underground',
+                             'CLS Blue Sky Blog', 'Credit Slips', 'Musings on Markets', 'Above the Law'])
+
 
 if __name__ == '__main__':
     unittest.main()
