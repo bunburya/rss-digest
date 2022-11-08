@@ -14,7 +14,7 @@ from datetime import datetime
 logging.getLogger().setLevel(logging.INFO)
 
 import requests
-from rss_digest.feedlist import from_opml_file, FeedList
+from rss_digest.feeds import parse_opml_file, FeedList
 
 def main(content_dir: str, *opml_files: str):
     now_utc = datetime.utcnow()
@@ -31,7 +31,7 @@ def main(content_dir: str, *opml_files: str):
 
     for opml_file in opml_files:
         logging.info(f'Checking OPML file {opml_file}')
-        feedlist = from_opml_file(opml_file)
+        feedlist = parse_opml_file(opml_file)
         for feed in feedlist:
             rss_file = os.path.join(today_dir, feed.title.replace('/', '__slash__').replace('.', '__dot__') + '.xml')
             try:

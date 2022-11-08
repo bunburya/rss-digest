@@ -1,223 +1,95 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
 import shutil
-import os
-from datetime import datetime
-from typing import List, Optional, Tuple, Dict, Set
+from os import mkdir, listdir
+from os.path import exists, join
+from shutil import rmtree
+from typing import List, Optional
 
-from rss_digest.config import AppConfig
-from rss_digest.exceptions import ProfileExistsError, ProfileNotFoundError, FeedError
-from rss_digest.feedlist import WILDCARD
-from rss_digest.model_utils import config_context_from_configs, feed_result_from_reader, feed_result_from_url, \
-    entry_result_from_reader, category_result_from_dicts, datetime_helper_from_config
-from rss_digest.models import ConfigContext, Context
-from rss_digest.output import OutputGenerator, OutputSender
+from rss_digest.config import Config
+from rss_digest.dao import ProfilesDAO
+from rss_digest.feeds import FeedList, get_profile_feedlist
 from rss_digest.profile import Profile
+from rss_digest.html_generator import HTMLGenerator
+from rss_digest.email_senders import BasicEmailSender
 
 
 class RSSDigest:
-    """This class kind of sits in the middle and ties everything
-    together, and is mainly here so that different UIs have a consistent
-    interface to interact with.
-
-    """
-
-    def __init__(self, config: AppConfig):
+    
+    def __init__(self, config: Config, profiles_dao: Optional[ProfilesDAO] = None):
         self.config = config
-        self._output_generator = OutputGenerator(config)
-        self._output_sender = OutputSender(config)
+        self.html_generator = HTMLGenerator(self)
+        self.email_sender = BasicEmailSender(config)
+        self.profiles_dao = profiles_dao or ProfilesDAO(config.profiles_db)
 
     @property
     def profiles(self) -> List[str]:
-        return os.listdir(self.config.profiles_config_dir)
+        return self.profiles_dao.list_profiles()
+    
+    def add_profile(self, profile_name: str, email: str, user_name: Optional[str] = None):
+        profile = Profile(self.config, profile_name, email, user_name, self.profiles_dao)
+        profile.save()
 
-    def profile_exists(self, name: str) -> bool:
-        return os.path.exists(self.config.get_profile_config_dir(name))
-
-    def add_profile(self, name: str) -> Profile:
-        """Create a new profile.
-
-        :param name: The name of the profile to create.
-        :return: The new profile's :class:`Profile` object.
-
-        """
-        if self.profile_exists(name):
-            raise ProfileExistsError(f'Profile already exists: {name}')
-        return Profile(name, self.config.get_profile_config(name))
+    def edit_profile(self, profile_name: str, email: Optional[str] = None, user_name: Optional[str] = None):
+        profile = self.get_profile(profile_name)
+        if email:
+            profile.email = email
+        if user_name:
+            profile.user_name = user_name
+        profile.save()
 
     def delete_profile(self, profile_name: str):
-        """Permanently delete a profile, together with all associated
-        configuration and state files.
-
-        """
-
-        shutil.rmtree(self.config.get_profile_config_dir(profile_name))
-        shutil.rmtree(self.config.get_profile_data_dir(profile_name))
-
-    def get_profile(self, name: str) -> Profile:
-        if self.profile_exists(name):
-            return Profile(name, self.config.get_profile_config(name))
-        else:
-            raise ProfileNotFoundError(f'Profile "{name}" does not exist.')
-
-    def add_feed(self, profile_name: str, feed_url: str, feed_title: str, category: Optional[str] = None,
-                 test_feed: bool = False, mark_read: bool = False, fetch_title: bool = False,
-                 write: bool = True):
-        """Add a feed to the :class:`FeedList`.
-
-        :param profile_name: The name of the profile to act upon.
-        :param feed_url: The URL of the feed.
-        :param feed_title: The title of the feed.
-        :param category: The category to which the feed belongs.
-        :param test_feed: If True, request the feed's URL to ensure
-            it is valid.
-        :param mark_read: If True, update the feed and mark all existing
-            entries as read immediately, so that the next time we
-            generate a digest only subsequently added entries will be
-            listed.
-        :param fetch_title: If True, request the feed URL and set the
-            title from the response. Overrides ``feed_title``.
-        :param write: If True, write the FeedList to the profile's OPML
-            file upon adding the feed.
-
-        """
         profile = self.get_profile(profile_name)
-        return profile.add_feed(feed_url, feed_title, category, test_feed, mark_read, fetch_title, write)
+        profile.rmdirs()
+        self.profiles_dao.delete_profile(profile_name)
 
-    def delete_feeds(self, profile_name: str, feed_url: Optional[str] = WILDCARD, feed_title: Optional[str] = WILDCARD,
-                     category: Optional[str] = WILDCARD) -> int:
-        """Delete all feeds for the given profile and matching the given
-        title, URL and category.
+    def add_feed(self, profile_name: str, feed_name: str, feed_url: str, category: str = None):
+        #TODO
+        pass
 
-        :param profile_name: The profile to delete the feeds from.
-        :param feed_title: Title of feed to remove.
-        :param feed_url: URL of feed to remove.
-        :param category: Category of feed to remove.
-        :return: The total number of feeds removed.
+    def get_profile(self, profile_name: str) -> Profile:
+        return self.profiles_dao.load_profile(profile_name)
 
-        """
-        return self.get_profile(profile_name).delete_feeds(feed_url, feed_title, category)
+    def get_feedlist(self, profile: Profile) -> FeedList:
+        return get_profile_feedlist(profile)
 
-    def update_feeds(self, profile_name: str) -> Tuple[Set[str], Set[str]]:
-        """Update all feeds for a given profile.
+    ### LEGACY CODE FOLLOWS
 
-        :return: A tuple of two lists, the first of which is the list
-            of urls of feeds that have been updated and the second of
-            which is a list of URLs of feeds for which an error was
-            received when updating."""
-
-        return self.get_profile(profile_name).update_feeds()
-
-    def get_config_context(self, profile_name: str) -> ConfigContext:
-        """Get a ConfigContext object that can be used to generate
-        output.
-
-        :param profile_name: The name of the profile whose configuration
-            should be used.
-
-        """
-
-        return config_context_from_configs(
-            self.config,
-            self.get_profile(profile_name).config
-        )
-
-    def update_and_get_context(self, profile: Profile) -> Context:
-        """Perform an update for the given profile, and generate a
-        Context object which can be used to generate the output to be
-        sent to the user.
-
-        :param profile: The profile to be updated.
-
-        """
-
-        profile_config = profile.config
-        app_config = self.config
-        reader = profile.reader
-        feedlist = profile.feedlist
-        last_updated_utc = profile.last_updated
-        updated, errors = self.update_feeds(profile.name)
-        not_inactive = updated | errors  # URLs for all feeds that were either updated or errors (in other words, if a
-                                         # URL is not in this set, we were able to fetch it but there were no updates
-                                         # available).
-        others = {f.xml_url for f in feedlist.feeds if f.xml_url not in not_inactive}
-        updated_utc = datetime.utcnow()
-        unread = profile.get_unread_entries()
-        categories = []
-        for cat_name in feedlist.categories:
-            category = feedlist.categories[cat_name]
-            updated_dict = {}
-            errors_dict = {}
-            others_dict = {}
-            for f in category:
-                url = f.xml_url
-                if url in unread:
-                    updated_dict[url] = feed_result_from_reader(
-                        reader.get_feed(url),
-                        cat_name,
-                        [entry_result_from_reader(e) for e in unread[url]],
-                        profile_config
-                    )
-                elif url in errors:
-                    errors_dict[url] = feed_result_from_url(
-                        url,
-                        reader,
-                        feedlist,
-                        [],
-                        profile_config
-                    )
-                elif url in others:
-                    others_dict[url] = feed_result_from_url(
-                        url,
-                        reader,
-                        feedlist,
-                        [],
-                        profile_config
-                    )
-                else:
-                    raise FeedError(f'Feed URL "{url}" is present in FeedCategory but not accounted for in `updated`, '
-                                    f'`errors` or `others`.')
-            categories.append(category_result_from_dicts(
-                updated_dict,
-                errors_dict,
-                others_dict,
-                category,
-                profile_config
-            ))
-
-        return Context(
-            profile_name=profile.name,
-            update_time_utc=updated_utc,
-            last_update_utc=last_updated_utc,
-            categories=categories,
-            config=config_context_from_configs(app_config, profile_config),
-            subscribed_feeds_count=len(feedlist.feeds),
-            datetime_helper=datetime_helper_from_config(profile_config)
-        )
-
-    def run(self, profile_name: str, save: bool = True,
-            method: Optional[str] = None, format: Optional[str] = None):
-        """Get unread entries for a given profile and send in the
-        appropriate way.
-
-        :param profile_name: The name of the profile.
-        :param save: If True, mark entries as read and update the
-            "last_updated" value for the profile once the digest is sent.
-        :param method: The method to use to send the digest.
-        :param format: How the output should be formatted.
-
-        """
-        profile = self.get_profile(profile_name)
-        context = self.update_and_get_context(profile)
-        #print(context)
-        profile_config = profile.config
-        template = format or profile_config.get_main_config_value('output_format')
-        output = self._output_generator.generate(template, context)
-        self._output_sender.send(output, profile_config, method)
-        if save:
-            profile.mark_read()
-            profile.last_updated = datetime.utcnow()
-
+    # def new_profile(self, name, email):
+    #     profile = Profile(self, name, email)
+    #     return profile
+    #
+    # def del_profile(self, name):
+    #     rmtree(join(self.profiles_dir, name), ignore_errors=True)
+    #
+    # def email_profile(self, profile, update=True):
+    #     """Sends an RSS Digest email for the given profile."""
+    #     # Running order:
+    #     # - fetch new feeds
+    #     # - filter new feeds using old feeds (loaded from file)
+    #     # - save filtered feeds to file
+    #     # - generate html from filtered feeds
+    #     # - send email
+    #     html = self.get_output_for_profile(profile)
+    #     self.email_sender.send_email(profile, html)
+    #     if update:
+    #         profile.update_last_updated()
+    #         profile.feed_handler.save()
+    #
+    # def get_output_for_profile(self, profile, update=False):
+    #     """Fetch new entries for a profile and return the related output
+    #     (the rendered template).
+    #
+    #     Only save state and data if save=True (I expect this generally
+    #     won't be appropriate because we only want to save when we
+    #     successfully deliver the HTML to the user."""
+    #
+    #     profile.feed_handler.update_feeds()
+    #     html = self.html_generator.generate_html(profile)
+    #     if update:
+    #         profile.update_last_updated()
+    #         profile.feed_handler.save()
+    #     return html
+    #
+    # def email_profile_name(self, name, update=True):
+    #     self.email_profile(self.get_profile(name), update=update)
