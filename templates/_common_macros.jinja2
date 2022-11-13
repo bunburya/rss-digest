@@ -1,0 +1,8 @@
+{# This file contains macros that are common to several templates. -#}
+
+{% macro author_date(entry) -%}
+{# Generate a line describing the publication date and author of an entry, where available. -#}
+{% if entry.author or entry.published_utc -%}({% if entry.author %}by {{ entry.author }}{% endif -%}
+{% if entry.author and entry.published_utc %} {% endif -%}
+{% if entry.published_utc %}on {{ ctx.local_format(entry.published_utc) }}{% endif %}){% endif -%}
+{% endmacro -%}

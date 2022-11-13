@@ -10,9 +10,8 @@ appdirs = "*"
 lxml = "*"
 lxml-stubs = "*"
 pytest = "*"
-sphinx = "*"
-pytz = "*"
-beautifulsoup4 = "*"
+requests = "*"
+tomli = "*"
 
 [dev-packages]
 pytest = "*"

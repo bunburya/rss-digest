@@ -1,7 +1,7 @@
 # Default user-specific configuration
 
 # The user's name, which can be used in the generated output.
-name = "You"
+user_name = "You"
 
 # Email to send output to.
 email = ''
