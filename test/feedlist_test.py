@@ -70,6 +70,11 @@ class FeedListTestCase(unittest.TestCase):
                              'Maggie Appleton', 'Apollo Magazine', 'Books | The Guardian', 'Bank Underground',
                              'CLS Blue Sky Blog', 'Credit Slips', 'Musings on Markets', 'Above the Law'])
 
+    def test_04_new_feedlist(self):
+        new1 = FeedList()
+        self.assertCategoriesAre(new1, [])
+        self.assertFeedsAre(new1, [])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,15 @@
+{# Plain text output template for rss-digest -#}
+{# Note: Because this is plaintext, newlines and indentation will be rendered faithfully. -#}
+{% extends "_base.jinja2" -%}
+{% import '_plaintext_macros.jinja2' as m with context -%}
+{% block entries -%}
+{% if ctx.has_categories -%}
+{% for c in ctx.updated_categories -%}
+{{ m.display_category(c, '', '  ', '    ') -}}
+{% endfor -%}
+{% else -%}
+{% for f in context.visible_updated_feeds %}
+{{ m.display_feed(f, '  ', '    ') }}
+{% endfor -%}
+{% endif -%}
+{% endblock -%}

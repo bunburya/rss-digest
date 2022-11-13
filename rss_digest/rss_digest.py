@@ -8,7 +8,7 @@ from typing import List, Optional
 
 from rss_digest.config import Config
 from rss_digest.dao import ProfilesDAO
-from rss_digest.feeds import FeedList, get_profile_feedlist
+from rss_digest.feeds import FeedList
 from rss_digest.profile import Profile
 from rss_digest.html_generator import HTMLGenerator
 from rss_digest.email_senders import BasicEmailSender
@@ -44,14 +44,12 @@ class RSSDigest:
         self.profiles_dao.delete_profile(profile_name)
 
     def add_feed(self, profile_name: str, feed_name: str, feed_url: str, category: str = None):
-        #TODO
-        pass
+        profile = self.get_profile(profile_name)
+        profile.add_feed(feed_name, feed_url, category)
 
     def get_profile(self, profile_name: str) -> Profile:
         return self.profiles_dao.load_profile(profile_name)
 
-    def get_feedlist(self, profile: Profile) -> FeedList:
-        return get_profile_feedlist(profile)
 
     ### LEGACY CODE FOLLOWS
 

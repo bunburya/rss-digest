@@ -3,11 +3,11 @@ from typing import Union
 from reader import Entry
 from rss_digest.feeds import FeedList, Feed, FeedCategory
 
-
 """Classes for storing :class:`Entry` objects, so that they can easily be retrieved from the relevant category and/or
 feed url.
 
 """
+
 
 class FeedEntries:
     """A class representing a collection of entries for a particular feed."""

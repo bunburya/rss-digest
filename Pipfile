@@ -11,6 +11,7 @@ lxml = "*"
 lxml-stubs = "*"
 pytest = "*"
 requests = "*"
+tomli = "*"
 
 [dev-packages]
 pytest = "*"

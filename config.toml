@@ -1,0 +1,28 @@
+# Default user-specific configuration
+
+# The user's name, which can be used in the generated output.
+user_name = "You"
+
+# Email to send output to.
+email = ''
+
+# strftime-compatible format string for describing dates.
+date_format = '%A %d %B %Y'
+
+# strftime-compatible format string for describing time.
+time_format = '%H:%M'
+
+# Which template to use to generate output.
+template = 'email.html'
+
+# Maximum number of feeds to display in a single digest.
+max_displayed_feeds = 10
+
+# Maximum number of new entries to display per feed.
+max_displayed_entries = 15
+
+# Where feeds are sorted by category, what name to use for the section with uncategorised feeds.
+uncategorized_name = '[Uncategorised]'
+
+# User's timezone.
+timezone = 'UTC'

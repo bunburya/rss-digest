@@ -1,7 +1,10 @@
 import os
 import shutil
-from typing import Optional
+from configparser import ConfigParser
+from copy import deepcopy
+from typing import Optional, Any
 
+import tomli
 from reader import Reader, make_reader, Entry
 from rss_digest.config import Config
 from rss_digest.dao import ProfilesDAO
@@ -13,6 +16,7 @@ class Profile:
 
     def __init__(self, config: Config, profile_name: str, email: str, user_name: Optional[str] = None,
                  dao: Optional[ProfilesDAO] = None):
+        self.app_config = config
         self.dao = dao or ProfilesDAO(config.profiles_db)
         if profile_name in self.dao.list_profiles():
             raise ProfileExistsError(f'Profile "{profile_name}" already exists. '
@@ -22,6 +26,7 @@ class Profile:
         self.email = email
 
         self.config_dir = os.path.join(config.profile_config_dir, profile_name)
+        self.config_file = os.path.join(self.config_dir, 'config.ini')
         self.templates_dir = os.path.join(self.config_dir, 'templates')
         self.data_dir = os.path.join(config.data_dir, profile_name)
         self.profile_dirs = (self.config_dir, self.templates_dir, self.data_dir)
@@ -32,6 +37,7 @@ class Profile:
 
         self._feedlist = None
         self._reader = None
+        self._config = None
 
     def save(self):
         self.dao.save_profile(self)
@@ -65,6 +71,29 @@ class Profile:
         if save:
             feedlist.to_opml_file(self.feedlist_fpath)
 
+    def _update_config_dict(self, config_fpath: str, config_dict: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+        """Update a dict with config values read from the given TOML config file.
+        
+        :param config_fpath: Path to the TOML file.
+        :param config_dict: A dict holding existing config values. If none is provided, an empty dict will be used.
+        :return: A new dict with the updated values (provided dict is not changed).
+        """
+        if config_dict is None:
+            to_update = {}
+        else:
+            to_update = deepcopy(config_dict)
+        with open(config_fpath, 'rb') as f:
+            to_update.update(tomli.load(f))
+        return to_update
+
+    @property
+    def config(self) -> dict[str, Any]:
+        if self._config is None:
+            _config = self._update_config_dict(self.app_config.default_config_file, self._config)
+            if os.path.exists(self.config_file):
+                _config = self._update_config_dict(self.config_file, _config)
+            self._config = _config
+        return self._config
 
     def get_unread_entries(self, mark_read: bool = False) -> list[Entry]:
         """Return unread feed entries."""

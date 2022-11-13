@@ -107,7 +107,7 @@ class FeedCategory:
         return elem
 
     @classmethod
-    def _flatten_category(cls, elem: Element) -> List[Feed]:
+    def _flatten_category_elem(cls, elem: Element) -> List[Feed]:
         """Recursively parse a `category` outline element and return a
         flattened list of Feed instances based on the ultimate `rss`
         outlines.
@@ -117,7 +117,7 @@ class FeedCategory:
         for child in elem:
             outline_type = child.get('type')
             if outline_type == 'category':
-                feeds.extend(cls._flatten_category(child))
+                feeds.extend(cls._flatten_category_elem(child))
             elif outline_type == 'rss':
                 feeds.append(Feed.from_opml(child))
             else:
@@ -127,7 +127,7 @@ class FeedCategory:
     @classmethod
     def from_opml(cls, elem: Element) -> 'FeedCategory':
         category_name = elem.get('text')
-        feeds = cls._flatten_category(elem)
+        feeds = cls._flatten_category_elem(elem)
         return FeedCategory(category_name, feeds)
 
     def __iter__(self):
@@ -136,7 +136,7 @@ class FeedCategory:
 
 @dataclass
 class FeedList:
-    """A representation of a list of feeds (optionally sorted into categories).
+    """A representation of a list of feeds (sorted into categories).
 
     :param category_dict: An ordered dict mapping category names to :class:`FeedCategory` objects. None is used as a key
         for uncategorised feeds. Where a feed list does not use categories, `feeds` will have a single FeedCategory
