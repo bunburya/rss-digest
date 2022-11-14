@@ -153,10 +153,6 @@ class FeedCategory:
         return iter(self.feeds)
 
 
-def _category_dict_factory():
-    return OrderedDict(((None, FeedCategory()),))
-
-
 @dataclass
 class FeedList:
     """A representation of a list of feeds (sorted into categories).
@@ -169,7 +165,7 @@ class FeedList:
     :param url_to_feed: A dict mapping each feed's URL to the relevant :class:`Feed` object.
     """
 
-    category_dict: OrderedDict[Optional[str], FeedCategory] = field(default_factory=_category_dict_factory)
+    category_dict: OrderedDict[Optional[str], FeedCategory] = field(default_factory=OrderedDict)
     title: Optional[str] = None
     date_modified: Optional[datetime] = None
     url_to_feed: dict[str, Feed] = field(default_factory=dict)
@@ -215,7 +211,7 @@ class FeedList:
         if category is not WILDCARD:
             to_search = [category]
         else:
-            to_search = self.categories
+            to_search = self.category_names
         removed = 0
         for category in to_search:
             # logger.debug(f'Removing matching feeds from {category}.')

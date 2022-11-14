@@ -59,18 +59,18 @@ class FeedListTestCase(unittest.TestCase):
                              'Liberty Street Economics', 'Musings on Markets', 'Above the Law', 'Test Feed 1',
                              'Test Feed 3'])
 
-    def test_03_del_feed(self):
+    def test_04_del_feed(self):
         """Test deletion of feeds."""
         # Remove by name
-        self.feedlist2.remove_feed(feed_name='Liberty Street Economics')
+        self.feedlist2.remove_feeds(feed_title='Liberty Street Economics')
         # Remove by URL
-        self.feedlist2.remove_feed(xml_url='https://criticalfinance.org/feed/')
+        self.feedlist2.remove_feeds(feed_url='https://criticalfinance.org/feed/')
         self.assertFeedsAre(self.feedlist2,
                             ['Bartosz Ciechanowski', 'The Pudding', 'Wait But Why', 'Gwern.net Newsletter',
                              'Maggie Appleton', 'Apollo Magazine', 'Books | The Guardian', 'Bank Underground',
                              'CLS Blue Sky Blog', 'Credit Slips', 'Musings on Markets', 'Above the Law'])
 
-    def test_04_new_feedlist(self):
+    def test_05_new_feedlist(self):
         new1 = FeedList()
         self.assertCategoriesAre(new1, [])
         self.assertFeedsAre(new1, [])
