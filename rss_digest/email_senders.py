@@ -45,11 +45,11 @@ class BasicEmailSender(EmailSender):
 
         # Create the message
         msg = MIMEText(msg, 'html')
-        to_addr = (profile.user_name or profile.profile_name, profile.get_conf('email'))
+        to_addr = (profile.user_name or profile.name, profile.get_conf('email'))
         msg['To'] = email.utils.formataddr(to_addr)
         from_addr = (email_data['author'], email_data['email'])
         msg['From'] = email.utils.formataddr(from_addr)
-        subj_str = '{}, your RSS digest email'.format(profile.user_name or profile.profile_name)
+        subj_str = '{}, your RSS digest email'.format(profile.user_name or profile.name)
         msg['Subject'] = subj_str
 
         logging.info('Attempting to send email to %s.', to_addr)

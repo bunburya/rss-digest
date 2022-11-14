@@ -1,4 +1,5 @@
 """Functions and classes for using the command line interface."""
+
 import argparse
 
 from rss_digest.config import Config
@@ -30,10 +31,10 @@ class CLI:
     def view_profile(self, args: argparse.Namespace):
         try:
             profile = self.rss_digest.get_profile(args.profile_name)
-            print(f'Profile name: {profile.profile_name}')
+            print(f'Profile name: {profile.name}')
             print(f'Email: {profile.email}')
             print(f'User name: {profile.user_name}')
-            feedlist = self.rss_digest.get_feedlist(profile)
+            feedlist = profile.feedlist
             print('Subscribed feeds:')
             for c in feedlist.categories:
                 print(f' Category: {c.name}')

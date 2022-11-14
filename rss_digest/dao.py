@@ -29,7 +29,7 @@ class ProfilesDAO:
 
     def save_profile(self, profile: 'Profile'):
         cursor = self.conn.cursor()
-        cursor.execute(self.ADD_PROFILE, (profile.profile_name, profile.email, profile.user_name))
+        cursor.execute(self.ADD_PROFILE, (profile.name, profile.email, profile.user_name))
         self.conn.commit()
 
     def load_profile(self, profile_name: str) -> 'Profile':
