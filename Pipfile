@@ -12,6 +12,9 @@ lxml-stubs = "*"
 pytest = "*"
 requests = "*"
 tomli = "*"
+sphinx = "*"
+pytz = "*"
+beautifulsoup4 = "*"
 
 [dev-packages]
 pytest = "*"
