@@ -3,7 +3,7 @@ import os
 import unittest
 from typing import Sequence
 
-from rss_digest.feeds import FeedList, parse_opml_file
+from rss_digest import FeedList, parse_opml_file
 
 OPML1 = os.path.join('test_data', 'opml', 'tt-rss_2022-11-08.opml')
 OPML1_copy = os.path.join('test_data', 'opml', 'tt-rss_2022-11-08_copy.opml')

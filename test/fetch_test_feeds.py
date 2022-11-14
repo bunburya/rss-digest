@@ -14,7 +14,7 @@ from datetime import datetime
 logging.getLogger().setLevel(logging.INFO)
 
 import requests
-from rss_digest.feeds import parse_opml_file, FeedList
+from rss_digest import parse_opml_file
 
 
 def main(content_dir: str, *opml_files: str):

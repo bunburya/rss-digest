@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-from configparser import ConfigParser
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Optional, Any
@@ -11,9 +10,9 @@ from typing import Optional, Any
 import pytz
 import tomli
 from pytz import tzinfo
-from reader import Reader, make_reader, Entry, FeedExistsError as reader_FeedExistsError, ParseError, UpdatedFeed, \
+from reader import make_reader, Entry, FeedExistsError as reader_FeedExistsError, ParseError, UpdatedFeed, \
     ReaderError
-from rss_digest.exceptions import ProfileExistsError, FeedExistsError, FeedError
+from rss_digest.exceptions import FeedExistsError, FeedError
 from rss_digest.feeds import FeedList, parse_opml_file, WILDCARD
 
 from typing import TYPE_CHECKING
@@ -32,7 +31,7 @@ class Profile:
         self.config_dir = os.path.join(config.profile_config_dir, profile_name)
         self.config_file = os.path.join(self.config_dir, 'config.toml')
         self.opml_file = os.path.join(self.config_dir, 'feeds.opml')
-        self.data_dir = os.path.join(config.data_dir, profile_name)
+        self.data_dir = os.path.join(config.profile_data_dir, profile_name)
         self.last_updated_file = os.path.join(self.data_dir, 'last_updated')
 
         self.profile_dirs = (self.config_dir, self.data_dir)
@@ -41,8 +40,8 @@ class Profile:
         self.reader_db_file = os.path.join(self.data_dir, 'reader.db')
 
         self._feedlist = None
-        self._reader = None
         self._config = None
+
 
     def _update_config_dict(self, config_fpath: str, config_dict: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Update a dict with config values read from the given TOML config file.
@@ -125,6 +124,7 @@ class Profile:
 
         """
         logger.info(f'Syncing OPML file with reader database for profile {self.name}.')
+        logger.info(f'Using reader DB file at {self.reader_db_file}')
         feedlist = self.feedlist
         with make_reader(self.reader_db_file) as reader:
             opml_urls = {f.xml_url for f in feedlist}

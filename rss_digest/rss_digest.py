@@ -7,7 +7,7 @@ from typing import List, Optional
 from reader import make_reader
 
 from rss_digest.config import Config
-from rss_digest.exceptions import ProfileExistsError, FeedError
+from rss_digest.exceptions import ProfileExistsError, FeedError, ProfileNotFoundError
 from rss_digest.feeds import WILDCARD
 from rss_digest.output import OutputGenerator, SendmailOutputSender
 from rss_digest.output_context import ConfigContext, Context, FeedResult, EntryResult, CategoryResult, DateTimeHelper
@@ -19,7 +19,7 @@ class RSSDigest:
         self.config = config
         self._profile_cache: dict[str, Profile] = {}
         self._output_generator = OutputGenerator(config)
-        self._output_sender = SendmailOutputSender
+        self._output_sender = SendmailOutputSender(config)
 
     @property
     def profiles(self) -> List[str]:
@@ -42,8 +42,11 @@ class RSSDigest:
 
     def delete_profile(self, profile_name: str):
         """Permanently delete a profile, together with all associated configuration and state files."""
-        profile = self.get_profile(profile_name)
-        profile.rmdirs()
+        if self.profile_exists(profile_name):
+            profile = self.get_profile(profile_name)
+            profile.rmdirs()
+        else:
+            raise ProfileNotFoundError(f'Profile "{profile_name}" does not exist.')
 
     def get_profile(self, profile_name: str) -> Profile:
         if profile_name in self._profile_cache:
@@ -188,6 +191,7 @@ class RSSDigest:
 
         """
         profile = self.get_profile(profile_name)
+        profile.sync_reader()
         context = self.update_and_get_context(profile)
         # print(context)
         template = template or profile.config['template']

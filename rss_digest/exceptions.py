@@ -3,6 +3,12 @@
 
 class RSSDigestError(Exception):
     """Base class for all errors."""
+    pass
+
+
+class BadInstallationError(RSSDigestError):
+    """App is not installed properly."""
+    pass
 
 
 class ProfileError(RSSDigestError):

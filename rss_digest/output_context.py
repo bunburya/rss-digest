@@ -7,15 +7,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, tzinfo
-from types import ModuleType
-from typing import Optional, List, Generator, Any
+from typing import Optional, List
 
 import reader
 from pytz import timezone
 from reader import Reader
 
 from rss_digest.exceptions import FeedNotFoundError
-from rss_digest.feeds import FeedCategory, FeedList
+from rss_digest.feeds import FeedCategory
 from rss_digest.profile import Profile
 
 try:

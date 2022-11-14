@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rss-digest"
+version = "0.1"
+dependencies = [
+    'reader',
+    'jinja2',
+    'appdirs',
+    'lxml',
+    'lxml-stubs',
+    'pytest',
+    'requests',
+    'sphinx',
+    'pytz',
+    'tomli',
+    'beautifulsoup4'
+]
+authors = [
+  { name="bunburya", email="dev@bunburya.eu" },
+]
+description = "Generate digests of subscribed RSS and Atom feeds."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/bunburya/rss-digest"
+
+[project.scripts]
+rss-digest = "rss_digest:main"

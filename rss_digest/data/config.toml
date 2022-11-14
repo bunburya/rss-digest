@@ -26,3 +26,4 @@ template = 'html'
 
 # Method to use to deliver output to the user.
 delivery_method = 'sendmail_output'
+email = 'test@example.org'

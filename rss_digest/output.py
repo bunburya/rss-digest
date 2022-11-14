@@ -1,16 +1,10 @@
-import configparser
-import email.utils
 import logging
-import smtplib
 from abc import ABC
 from datetime import datetime
-from email.mime.text import MIMEText
-from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
 from rss_digest.config import Config
-from rss_digest.exceptions import BadConfigurationError
 from rss_digest.output_context import Context
 from rss_digest.profile import Profile
 
