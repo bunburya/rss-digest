@@ -3,7 +3,6 @@
 import argparse
 
 from rss_digest.config import Config
-from rss_digest.dao import ProfilesDAO
 from rss_digest.exceptions import ProfileNotFoundError
 from rss_digest.profile import Profile, ProfileExistsError
 from rss_digest.rss_digest import RSSDigest
@@ -14,7 +13,6 @@ class CLI:
     def __init__(self, config: Config):
         self.config = config
         self.rss_digest = RSSDigest(config)
-        self.profiles_dao = ProfilesDAO(config)
 
     def list_profiles(self, args: argparse.Namespace):
         print('Available profiles:')
@@ -23,7 +21,7 @@ class CLI:
 
     def add_profile(self, args: argparse.Namespace):
         try:
-            self.rss_digest.add_profile(args.profile_name, args.email, args.user_name)
+            self.rss_digest.add_profile(args.profile_name)
             print(f'Profile "{args.profile_name}" added. Now add some feeds.')
         except ProfileExistsError:
             print(f'Profile "{args.profile_name}" already exists.')
@@ -32,14 +30,14 @@ class CLI:
         try:
             profile = self.rss_digest.get_profile(args.profile_name)
             print(f'Profile name: {profile.name}')
-            print(f'Email: {profile.email}')
-            print(f'User name: {profile.user_name}')
+            #print(f'Email: {profile.email}')
+            #print(f'User name: {profile.user_name}')
             feedlist = profile.feedlist
             print('Subscribed feeds:')
             for c in feedlist.categories:
                 print(f' Category: {c.name}')
                 for f in c:
-                    print(f' Feed: {f.name} ({f.xml_url})')
+                    print(f' Feed: {f.title} ({f.xml_url})')
             print(f'Configuration stored in "{profile.config_dir}".')
         except ProfileNotFoundError:
             print(f'Profile "{args.profile_name}" not found.')

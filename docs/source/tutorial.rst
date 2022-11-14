@@ -43,16 +43,12 @@ depend on which operating system you are using. For example, on many Linux syste
 
 Within this directory you will find the following:
 
-#. A file named ``config.ini``. This is the default main configuration file, which allows you to configure the behaviour
-   of rss-digest globally.
-
-#. A file named ``output.ini``. This is the default output configuration file, which allows you to configure how
-   rss-digest should send the digests that it generates (for example, if you want to send digests by email, this file
-   should contain SMTP server and login details).
+#. A file named ``config.toml``. This is the default main configuration file, which allows you to configure the
+   behaviour of rss-digest globally.
 
 #. A directory named ``profiles``. This directory will contain a directory for each profile that you create. Each such
-   profile directory may contain a profile-specific ``config.ini`` and/or ``output.ini`` file. Values in those
-   profile-specific files will override the global configuration.
+   profile directory may contain a profile-specific ``config.toml`` file. Values in those profile-specific files will
+   override the global configuration.
 
 #. A directory named ``templates``, which contains the templates used by rss-digest to generate output (see below).
 
@@ -71,11 +67,11 @@ would run the following command:
 
 This will create an "empty" profile named "John", with no subscribed feeds and which uses the default application-level
 configuration. If you want to configure the behaviour of rss-digest for this profile, you should copy (not move) the
-global ``config.ini`` and/or ``output.ini`` to the profile directory and make the necessary changes.
+global ``config.toml`` to the profile config directory and make the necessary changes.
 
 .. note::
-  Currently the only way to configure rss-digest is by manually editing the global or profile-specific ``config.ini``
-  and ``output.ini`` files. There is no way to set configuration values directly from the command line.
+  Currently the only way to configure rss-digest is by manually editing the global or profile-specific ``config.toml``
+  file. There is no way to set configuration values directly from the command line.
 
 Adding and deleting feeds
 -----------------
@@ -143,26 +139,11 @@ on a subsequent run. This can be helpful for testing.
 Configuration options
 ---------------------
 
-There are two main configuration files: ``config.ini``, which contains options for configuring the behaviour of
-rss-digest generally, and ``output.ini``, which contains options relating to how rss-digest should send generated
-output. ``output.ini`` is a separate file because it may contain sensitive information, such as email addresses and
-login details.
+As mentioned above, rss-digest's behaviour is mainly configured through `TOML <https://toml.io>`_ configuration files.
+When you install rss-digest, the config directory will contain a ``config.toml`` file which contains some basic default
+configuration values. You can customise rss-digest's behaviour either by editing that file directly, or by placing
+another ``config.toml`` file in the relevant profile's config directory. [TODO]
 
-By default, there is a single ``config.ini`` and a single ``output.ini``, which will govern all profiles. However, you
-can include a profile-specific ``config.ini`` and/or ``output.ini`` in the relevant profile's configuration directory in
-order to modify rss-digest's behaviour for that profile. When rss-digest is run for a specific profile, it will first
-check in the profile-specific files for configuration values, and will fall back to the global configuration files if it
-can't find the relevant value.
-
-As the names suggest, both configuration files are in the `INI <https://en.wikipedia.org/wiki/INI_file>`_ format. INI
-files are divided into sections, denoted in square brackets. ``config.ini`` only has one section, ``[defaults]``, which
-contains all configuration options. You can take a look at the skeleton ``config.ini`` file to familiarise yourself with
-the available options, what they do and their default values.
-
-The sections in ``output.ini`` correspond to the output methods that you can specify in ``config.ini`` (which
-require configuration), ie, you should include an ``[smtp]`` section or a ``[file]`` section if you have selected one of
-those output methods. (The other output method, ``stdout``, does not require configuration.) Again, you can take a look
-at the skeleton ``output.ini`` to understand what values need to be provided.
 
 
 Writing output templates
@@ -172,7 +153,7 @@ rss-digest allows you to configure how output is formatted. Output is generated 
 `jinja2 <https://jinja2docs.readthedocs.io/en/stable/>`_ template. Templates are stored in the ``templates`` directory
 in the general configuration directory. Any file in that directory whose name does not begin with a ``\_`` will be
 treated as a template that can be specified in the main configuration. For example, if you set the ``output`` option to
-``plaintext`` in your ``config.ini``, rss-digest will look for a file called ``plaintext`` in the ``templates``
+``plaintext`` in your ``config.toml``, rss-digest will look for a file called ``plaintext`` in the ``templates``
 directory and use it to generate the output.
 
 .. warning::

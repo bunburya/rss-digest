@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import shutil
@@ -11,32 +13,29 @@ import tomli
 from pytz import tzinfo
 from reader import Reader, make_reader, Entry, FeedExistsError as reader_FeedExistsError, ParseError, UpdatedFeed, \
     ReaderError
-from rss_digest.config import Config
-from rss_digest.dao import ProfilesDAO
 from rss_digest.exceptions import ProfileExistsError, FeedExistsError, FeedError
 from rss_digest.feeds import FeedList, parse_opml_file, WILDCARD
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from rss_digest.config import Config
 
 logger = logging.getLogger(__name__)
 
 
 class Profile:
 
-    def __init__(self, config: Config, profile_name: str, dao: Optional[ProfilesDAO] = None):
+    def __init__(self, config: Config, profile_name: str):
         self.app_config = config
-        self.dao = dao or ProfilesDAO(config.profiles_db)
-        if profile_name in self.dao.list_profiles():
-            raise ProfileExistsError(f'Profile "{profile_name}" already exists. '
-                                     'Try loading it from the database instead.')
         self.name = profile_name
 
         self.config_dir = os.path.join(config.profile_config_dir, profile_name)
         self.config_file = os.path.join(self.config_dir, 'config.toml')
-        self.opml_file = os.path.join(self.config_file, 'feeds.opml')
-        self.templates_dir = os.path.join(self.config_dir, 'templates')
+        self.opml_file = os.path.join(self.config_dir, 'feeds.opml')
         self.data_dir = os.path.join(config.data_dir, profile_name)
         self.last_updated_file = os.path.join(self.data_dir, 'last_updated')
 
-        self.profile_dirs = (self.config_dir, self.templates_dir, self.data_dir)
+        self.profile_dirs = (self.config_dir, self.data_dir)
         self.mkdirs()
 
         self.reader_db_file = os.path.join(self.data_dir, 'reader.db')
@@ -69,9 +68,6 @@ class Profile:
             self._config = _config
         return self._config
 
-    def save(self):
-        self.dao.save_profile(self)
-
     def mkdirs(self):
         for d in self.profile_dirs:
             if not os.path.exists(d):
@@ -79,7 +75,8 @@ class Profile:
 
     def rmdirs(self):
         for d in self.profile_dirs:
-            shutil.rmtree(d)
+            if os.path.exists(d):
+                shutil.rmtree(d)
 
     def _load_feedlist(self) -> FeedList:
         try:
@@ -186,7 +183,6 @@ class Profile:
         """Delete all feeds for the given profile and matching the given
         title, URL and category.
 
-        :param profile: The profile to delete the feeds from.
         :param feed_url: URL of feed to remove.
         :param feed_title: Title of feed to remove.
         :param category: Category of feed to remove.

@@ -34,16 +34,16 @@ def main(content_dir: str, *opml_files: str):
         logging.info(f'Checking OPML file {opml_file}')
         feedlist = parse_opml_file(opml_file)
         for feed in feedlist:
-            rss_file = os.path.join(today_dir, feed.name.replace('/', '__slash__').replace('.', '__dot__') + '.xml')
+            rss_file = os.path.join(today_dir, feed.title.replace('/', '__slash__').replace('.', '__dot__') + '.xml')
             try:
                 r = requests.get(feed.xml_url)
                 r.raise_for_status()
-                logging.info(f'Got RSS for {feed.name} from {feed.xml_url}')
+                logging.info(f'Got RSS for {feed.title} from {feed.xml_url}')
                 with open(rss_file, 'w') as f:
                     f.write(r.text)
                     logging.info(f'Saved RSS to {rss_file}')
             except Exception as e:
-                logging.error(f'Error fetching RSS for {feed.name}')
+                logging.error(f'Error fetching RSS for {feed.title}')
                 logging.error(e, exc_info=True)
 
     end_utc = datetime.utcnow()

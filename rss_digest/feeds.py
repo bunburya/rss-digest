@@ -54,7 +54,7 @@ class FeedSearch:
     def __eq__(self, other):
         return all((
             isinstance(other, Feed),
-            self.name == other.name,
+            self.name == other.title,
             self.xml_url == other.xml_url,
             self.category == other.category
         ))
@@ -64,24 +64,24 @@ class FeedSearch:
 class Feed:
     """A representation of a single feed."""
 
-    name: str
+    title: str
     xml_url: str
     category: Optional[str] = None
 
     def to_opml(self) -> Element:
-        return Element('outline', {'type': 'rss', 'text': self.name, 'xmlUrl': self.xml_url})
+        return Element('outline', {'type': 'rss', 'text': self.title, 'xmlUrl': self.xml_url})
 
     @staticmethod
     def from_opml(elem: Element, category: Optional[str] = None) -> 'Feed':
         attr = dict(elem.attrib)
         if 'text' in attr:
-            name = attr.pop('text')
+            title = attr.pop('text')
         elif 'title' in attr:
-            name = attr['title']
+            title = attr['title']
         else:
             logging.warning('RSS outline element has neither "text" nor "title" attribute.')
-            name = ''
-        return Feed(name=name, xml_url=attr['xmlUrl'], category=category)
+            title = ''
+        return Feed(title=title, xml_url=attr['xmlUrl'], category=category)
 
 
 @dataclass
@@ -366,5 +366,5 @@ def parse_opml_file(fpath: str) -> FeedList:
     # here; lxml throws an OSError.
     except (FileNotFoundError, OSError):
         msg = f'OPML file not found at "{fpath}".'
-        loggerg.info(msg)
+        logger.info(msg)
         raise FileNotFoundError(msg)

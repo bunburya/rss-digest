@@ -45,7 +45,7 @@ class SendmailOutputSender(BaseOutputSender):
         name = profile.config.get('name') or profile.name
         date_fmt = profile.config['date_format']
         date = datetime.today().strftime(date_fmt)
-        print(f'To: {email}')
+        print(f'To: {email_addr}')
         print(f'Subject: {name}, your RSS digest for {date}')
         print(output)
 

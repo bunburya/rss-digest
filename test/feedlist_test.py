@@ -19,7 +19,7 @@ class FeedListTestCase(unittest.TestCase):
         cls.feedlist3 = parse_opml_file(OPML1_notcopy)
 
     def assertFeedsAre(self, feedlist: FeedList, feeds: Sequence):
-        feednames = [f.name for f in feedlist]
+        feednames = [f.title for f in feedlist]
         self.assertSequenceEqual(feednames, feeds)
 
     def assertCategoriesAre(self, feedlist: FeedList, categories: Sequence):

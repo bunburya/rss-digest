@@ -40,7 +40,7 @@ class Config:
 
         # Config file containing default values that will be used for all profiles unless overridden in a
         # profile-specific config file
-        self.default_config_file = os.path.join(self.config_dir, 'config.ini')
+        self.default_config_file = os.path.join(self.config_dir, 'config.toml')
 
         # Directory to store profile-specific configuration files
         self.profile_config_dir = os.path.join(self.config_dir, 'profiles')

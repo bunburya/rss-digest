@@ -7,24 +7,23 @@ from typing import List, Optional
 from reader import make_reader
 
 from rss_digest.config import Config
-from rss_digest.dao import ProfilesDAO
 from rss_digest.exceptions import ProfileExistsError, FeedError
 from rss_digest.feeds import WILDCARD
-from rss_digest.output import OutputGenerator
+from rss_digest.output import OutputGenerator, SendmailOutputSender
 from rss_digest.output_context import ConfigContext, Context, FeedResult, EntryResult, CategoryResult, DateTimeHelper
 from rss_digest.profile import Profile
 
 class RSSDigest:
 
-    def __init__(self, config: Config, profiles_dao: Optional[ProfilesDAO] = None):
+    def __init__(self, config: Config):
         self.config = config
-        self.profiles_dao = profiles_dao or ProfilesDAO(config.profiles_db)
         self._profile_cache: dict[str, Profile] = {}
         self._output_generator = OutputGenerator(config)
+        self._output_sender = SendmailOutputSender
 
     @property
     def profiles(self) -> List[str]:
-        return self.profiles_dao.list_profiles()
+        return os.listdir(self.config.profile_config_dir)
 
     def profile_exists(self, name: str) -> bool:
         return os.path.exists(os.path.join(self.config.profile_config_dir, name))
@@ -38,27 +37,19 @@ class RSSDigest:
         """
         if self.profile_exists(name):
             raise ProfileExistsError(f'Profile already exists: {name}')
-        return Profile(self.config, name, self.profiles_dao)
+        return Profile(self.config, name)
 
-    def edit_profile(self, profile_name: str, email: Optional[str] = None, user_name: Optional[str] = None):
-        profile = self.get_profile(profile_name)
-        if email:
-            profile.email = email
-        if user_name:
-            profile.user_name = user_name
-        profile.save()
 
     def delete_profile(self, profile_name: str):
         """Permanently delete a profile, together with all associated configuration and state files."""
         profile = self.get_profile(profile_name)
         profile.rmdirs()
-        self.profiles_dao.delete_profile(profile_name)
 
     def get_profile(self, profile_name: str) -> Profile:
         if profile_name in self._profile_cache:
             profile = self._profile_cache[profile_name]
         else:
-            profile = self.profiles_dao.load_profile(profile_name)
+            profile = Profile(self.config, profile_name)
             self._profile_cache[profile_name] = profile
         return profile
 
@@ -124,8 +115,6 @@ class RSSDigest:
         """
 
         with make_reader(profile.reader_db_file) as reader:
-            profile_config = profile.config
-            app_config = self.config
             feedlist = profile.feedlist
             last_updated_utc = profile.last_updated
             updated, errors = self.update_feeds(profile.name)
@@ -188,24 +177,22 @@ class RSSDigest:
                 datetime_helper=DateTimeHelper.from_profile(profile)
             )
 
-    def run(self, profile_name: str, save: bool = True, method: Optional[str] = None, template: Optional[str] = None):
+    def run(self, profile_name: str, save: bool = True, template: Optional[str] = None):
         """Get unread entries for a given profile and send in the
         appropriate way.
 
         :param profile_name: The name of the profile.
         :param save: If True, mark entries as read and update the "last_updated" value for the profile once the digest
             is sent.
-        :param method: The method to use to send the digest.
         :param template: Name of template file for generating output.
 
         """
         profile = self.get_profile(profile_name)
         context = self.update_and_get_context(profile)
         # print(context)
-        profile_config = profile.config
         template = template or profile.config['template']
         output = self._output_generator.generate(template, context)
-        self._output_sender.send(output, profile_config, method)
+        self._output_sender.send(output, profile)
         if save:
             profile.mark_read()
             profile.last_updated = datetime.utcnow()
