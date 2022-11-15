@@ -174,7 +174,7 @@ class Profile:
                     feed_title = reader.get_feed(feed_url).title or feed_title
 
             feedlist = self.feedlist
-            feedlist.add_feed(feed_url, feed_title, category)
+            feedlist.add_feed(feed_title, feed_url, category)
             if write:
                 feedlist.to_opml_file(self.opml_file)
 
