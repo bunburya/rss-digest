@@ -278,7 +278,10 @@ class FeedList:
 
     def to_opml_file(self, fpath: str):
         etree = ElementTree(self.to_opml())
-        etree.write(fpath)
+        if has_lxml:
+            etree.write(fpath, pretty_print=True)
+        else:
+            etree.write(fpath)
 
     def get_feed_by_url(self, url: str) -> Feed:
         return self.url_to_feed[url]

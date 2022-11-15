@@ -166,6 +166,7 @@ class Profile:
                 try:
                     reader.update_feed(feed_url)
                 except ParseError:
+                    reader.delete_feed(feed_url)
                     raise FeedError(f'Error fetching or parsing feed at URL: {feed_url}')
                 if mark_read:
                     for entry in reader.get_entries(feed=feed_url):
