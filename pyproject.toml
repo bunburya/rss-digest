@@ -16,7 +16,8 @@ dependencies = [
     'sphinx',
     'pytz',
     'tomli',
-    'beautifulsoup4'
+    'beautifulsoup4',
+    'importlib_resources'
 ]
 authors = [
   { name="bunburya", email="dev@bunburya.eu" },
