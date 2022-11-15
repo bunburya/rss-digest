@@ -170,6 +170,12 @@ class FeedList:
     date_modified: Optional[datetime] = None
     url_to_feed: dict[str, Feed] = field(default_factory=dict)
 
+    def __post_init__(self):
+        # Move None category to end
+        if None in self.category_dict:
+            no_category = self.category_dict.pop(None)
+            self.category_dict[None] = no_category
+
     def has_category(self, category: str) -> bool:
         """Check if this feed list has a category of the given name."""
         return category in self.category_dict.keys()

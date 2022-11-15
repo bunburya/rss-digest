@@ -41,6 +41,9 @@ class SendmailOutputSender(BaseOutputSender):
         date = datetime.today().strftime(date_fmt)
         print(f'To: {email_addr}')
         print(f'Subject: {name}, your RSS digest for {date}')
+        print(f'Content-Type: {profile.config.get("content_type", "text/plain")}')
+        print('MIME-Version: 1.0')
+
         print(output)
 
 # class OutputSender:

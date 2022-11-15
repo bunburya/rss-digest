@@ -308,7 +308,7 @@ class DateTimeHelper:
         """
         config = profile.config
         return DateTimeHelper(
-            config.get('default', 'datetime_format'),
+            config.get('datetime_format'),
             timezone(config['timezone'])
         )
 
