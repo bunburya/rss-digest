@@ -15,6 +15,7 @@ sphinx = "*"
 pytz = "*"
 beautifulsoup4 = "*"
 rss-digest = {editable = true, path = "."}
+importlib-resources = "*"
 
 [dev-packages]
 pytest = "*"

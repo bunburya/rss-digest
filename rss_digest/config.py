@@ -3,11 +3,9 @@
 import logging
 import os
 import shutil
-import site
-import sys
 from json import dump, load
 from typing import Optional
-from importlib.resources import files
+from importlib_resources import files
 
 import appdirs
 
