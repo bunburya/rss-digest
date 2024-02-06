@@ -5,4 +5,5 @@ document, email, etc which lists all the recent new or updated entries in each f
 SMTP, save it to a file or print it to standard output. The content and appearance of the digest is configurable using
 Jinja2 templates; templates for HTML, plain text and markdown output are included by default.
 
-For a detailed guide on how to install and use rss-digest is available, see the [tutorial](TODO). 
+For a detailed guide on how to install and use rss-digest, see the
+[tutorial](https://github.com/bunburya/rss-digest/blob/master/docs/source/tutorial.rst). 
