@@ -85,7 +85,6 @@ class Config:
     def copy_installed_configs(self):
         logger.info('Copying installed configuration files.')
         install_site = files().joinpath("resources")
-        print(f"INSTALL SITE: {install_site}")
         logger.info(f'Looking in {install_site}')
         conf_fpath = install_site.joinpath('config.toml')
         template_dir = install_site.joinpath('templates')
