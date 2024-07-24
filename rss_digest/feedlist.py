@@ -47,14 +47,6 @@ class FeedSearch:
     values match the equivalent values of the Feed.
     """
 
-<<<<<<< Updated upstream:rss_digest/feedlist.py
-<<<<<<< Updated upstream:rss_digest/feedlist.py
-    title: Optional[str] = WILDCARD
-    xml_url: Optional[str] = WILDCARD
-    category: Optional[str] = WILDCARD
-=======
-=======
->>>>>>> Stashed changes:rss_digest/feeds.py
     name: Optional[str] = None
     xml_url: Optional[str] = None
     category: Optional[str] = None
@@ -66,10 +58,6 @@ class FeedSearch:
             self.xml = WILDCARD
         if self.category is None:
             self.category = WILDCARD
-<<<<<<< Updated upstream:rss_digest/feedlist.py
->>>>>>> Stashed changes:rss_digest/feeds.py
-=======
->>>>>>> Stashed changes:rss_digest/feeds.py
 
     def __eq__(self, other):
         return all((
