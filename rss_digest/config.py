@@ -214,6 +214,7 @@ class AppConfig(BaseConfig):
         if not os.path.exists(self.templates_dir):
             os.makedirs(self.templates_dir)
 
+<<<<<<< Updated upstream
 
 
     def create_config_dir(self):
@@ -325,3 +326,17 @@ class ProfileConfig(BaseConfig):
         if val is None:
             val = self.app_config.get_main_config_value(key)
         return val
+=======
+    def copy_installed_configs(self):
+        logger.info('Copying installed configuration files.')
+        install_site = files().joinpath("data")
+        logger.info(f'Looking in {install_site}')
+        conf_fpath = install_site.joinpath('config.toml')
+        template_dir = install_site.joinpath('templates')
+        try:
+            shutil.copy(conf_fpath, self.config_dir)
+            for t in os.listdir(template_dir):
+                shutil.copy(os.path.join(template_dir, t), self.templates_dir)
+        except FileNotFoundError:
+            raise BadInstallationError(f'Could not find installed configuration files.')
+>>>>>>> Stashed changes
