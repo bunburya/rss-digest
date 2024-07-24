@@ -4,7 +4,7 @@ import sys
 import argparse
 from typing import Optional
 
-from rss_digest.config import AppConfig
+from rss_digest.config import Config
 from rss_digest.exceptions import ProfileNotFoundError, FeedError, ProfileExistsError
 from rss_digest.rss_digest import RSSDigest
 from rss_digest.metadata import APP_NAME
@@ -27,6 +27,7 @@ OUTPUT_METHODS = [
     'file'
 ]
 
+
 def err(msg: str):
     """Print a message to standard error.
 
@@ -35,11 +36,12 @@ def err(msg: str):
     """
     print(msg, file=sys.stderr)
 
+
 class CLI:
 
-    def __init__(self, config: Optional[AppConfig] = None):
+    def __init__(self, config: Optional[Config] = None):
         if config is None:
-            self._config = AppConfig()
+            self._config = Config(copy_config=True)
         else:
             self._config = config
         self._app = RSSDigest(self._config)
@@ -52,7 +54,7 @@ class CLI:
         if args.debug:
             logging.basicConfig(level=logging.INFO)
         args_dict = vars(args)
-        self._config = AppConfig(
+        self._config = Config(
             args_dict['config_dir'],
             args_dict['data_dir']
         )
@@ -121,13 +123,10 @@ class CLI:
         self._app.run(
             profile_name=args.profile_name,
             save=not args.forget,
-            method=args.output_method,
-            format=args.output_format
         )
 
 
 def get_arg_parser(cli: CLI) -> argparse.ArgumentParser:
-
     parser = argparse.ArgumentParser(description='Produce a digest of subscribed RSS feeds.')
     subparsers = parser.add_subparsers()
 

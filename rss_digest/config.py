@@ -1,27 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-import sys
 import logging
 import os
 import shutil
 from json import dump, load
-from configparser import ConfigParser
-from types import ModuleType
-from typing import Optional, Any, Mapping
-from importlib import import_module, resources
+from typing import Optional
+from importlib_resources import files
 
 import appdirs
 
-# Few helper functions
-
-from rss_digest.exceptions import BadConfigurationError
-from rss_digest.metadata import APP_NAME
+from rss_digest.exceptions import BadInstallationError
 
 logger = logging.getLogger(__name__)
 
+# Few helper functions
 
 def load_json(fpath, empty_type=dict):
     try:
@@ -29,307 +21,71 @@ def load_json(fpath, empty_type=dict):
             return load(f)
     except FileNotFoundError:
         return empty_type()
-
-
+    
 def save_json(data, fpath):
     with open(fpath, 'w') as f:
         dump(data, f, indent=4)
 
-MAIN_CONFIG_TYPES = {
-    'name': str,
-    'output_format': str,
-    'output_method': str,
-    'max_displayed_entries': int,
-    'max_displayed_feeds': int,
-    'include_updated': bool,
-    'date_format': str,
-    'time_format': str,
-    'datetime_format': str,
-    'timezone': str,
-    'no_category_name': str
-}
+class Config:
+    
+    """A class to control and store global configuration settings."""
 
-OUTPUT_CONFIG_TYPES = {
-    'smtp': {
-        'username': str,
-        'password': str,
-        'from_email': str,
-        'from_name': str,
-        'to_email': str,
-        'to_name': str,
-        'server': str,
-        'port': int
-    },
-    'file': {
-        'path': str
-    }
-}
+    def __init__(self, config_dir: Optional[str] = None, data_dir: Optional[str] = None, copy_config: bool = False):
 
-class BaseConfig:
-    """A base class for configuration classes. Contains some common
-    methods for reading configurations (writing configurations is not
-    currently supported).
+        # General config directory
+        self.config_dir = config_dir or appdirs.user_config_dir('rss-digest')
+        if not os.path.exists(self.config_dir):
+            os.makedirs(self.config_dir)
 
-    """
+        # Config file containing default values that will be used for all profiles unless overridden in a
+        # profile-specific config file
+        self.default_config_file = os.path.join(self.config_dir, 'config.toml')
 
-    def __init__(self, main_config_file: str, output_config_file: str,
-                 existing_main_config_file: Optional[str] = None,
-                 existing_output_config_file: Optional[str] = None,
-                 require_config: bool = False):
-        self.main_config_file = main_config_file
-        if existing_main_config_file:
-            shutil.copy(existing_main_config_file, main_config_file)
-        self.output_config_file = output_config_file
-        if existing_output_config_file:
-            shutil.copy(existing_output_config_file, output_config_file)
+        # Directory to store profile-specific configuration files
+        self.profile_config_dir = os.path.join(self.config_dir, 'profiles')
+        if not os.path.exists(self.profile_config_dir):
+            os.makedirs(self.profile_config_dir)
 
-        self.main_config = ConfigParser(interpolation=None)
-        try:
-            with open(self.main_config_file) as f:
-                self.main_config.read_file(f)
-        except FileNotFoundError as e:
-            if require_config:
-                raise e
-
-        # Only load output.ini when we need it
-        self._output_config: Optional[ConfigParser] = None
-
-        logger.debug(f'{self.__class__.__name__} initialised.')
-        logger.debug(f'Main config file: {self.main_config_file}')
-        logger.debug(f'Output config file: {self.output_config_file}')
-
-    @property
-    def output_config(self) -> ConfigParser:
-        if self._output_config is None:
-            self._output_config = ConfigParser()
-            with open(self.output_config_file) as f:
-                self._output_config.read_file(f)
-        return self._output_config
-
-    def _get_config_value(self, conf: ConfigParser, types: Mapping[str, type], section: str, key: str,
-                          fallback: Optional[Any] = None) -> Any:
-        """Look up the given configuration value and return it as the
-        appropriate datatype.
-
-        :param conf: The ConfigParser object to search.
-        :param section: The section of the ConfigParser object to check.
-        :param types: A mapping of configuration options to the
-            appropriate datatypes.
-        :param key: The name of the option to look up.
-        :return: The requested value, as the correct datatype.
-
-        """
-        logger.debug(f'Searching for config option "{key}" in section "{section}".')
-        raw_val = conf.get(section, key, fallback=None)
-        if raw_val is not None:
-            to_type = types[key]
-            logger.debug(f'Found value "{raw_val}"; converting to {to_type}.')
-            try:
-                val = to_type(raw_val)
-            except (TypeError, ValueError) as e:
-                logger.debug("Received exception when converting.")
-                if not raw_val:
-                    # We can't convert the value (eg, to an int) because it is an empty string, which probably means
-                    # the key is present in the INI file but no value is specified. Treat this as equivalent to the
-                    # value not being present.
-                    logger.debug('Value not set.')
-                    val = fallback
-                else:
-                    # Value has been defined, but we can't convert it to the appropriate type. Raise an error.
-                    raise BadConfigurationError(f'Value "{raw_val}" for option "{key}" cannot be converted to type'
-                                                f'"{to_type}".')
-
-        else:
-            logger.debug('Value not found.')
-            val = fallback
-        return val
-
-    def get_main_config_value(self, key: str) -> Any:
-        """Get the configuration value for a particular option from the
-        main configuration file.
-
-        :param key: The name of the option to look up.
-        :return: The specified value, as the correct datatype.
-
-        """
-        return self._get_config_value(self.main_config, MAIN_CONFIG_TYPES, 'defaults', key)
-
-    def get_output_config_value(self, section: str, key: str) -> Any:
-        """Get the configuration value for a particular option from the
-        output configuration file.
-
-        :param section: The section in the output configuration file to
-            search, corresponding to the type of output, eg, smtp.
-        :param key: The name of the option to look up.
-        :return: The specified value, as the correct datatype.
-
-        """
-        return self._get_config_value(self.output_config, OUTPUT_CONFIG_TYPES[section], section, key)
-
-
-class AppConfig(BaseConfig):
-    """A class to control and store app-level configuration settings."""
-
-    def __init__(self, config_dir: Optional[str] = None, data_dir: Optional[str] = None,
-                 existing_main_config_file: Optional[str] = None, existing_output_config_file: Optional[str] = None):
-        """Create a new AppConfig object.
-
-        :param config_dir: Where to store the config directory.
-        :param data_dir: Where to store the data directory.
-        :param existing_main_config_file: A path to an existing config.ini file
-            to be copied to the appropriate location.
-        :param existing_output_config_file: A path to an existing output.ini file
-            to be copied to the appropriate location.
-
-        If an argument is not provided, a location will be chosen based
-        on the operating system (using the ``appdirs`` library).
-
-        """
-        self.config_dir = config_dir or appdirs.user_config_dir(APP_NAME)
-        self.profiles_config_dir = os.path.join(self.config_dir, 'profiles')
-        if not os.path.exists(self.profiles_config_dir):
-            os.makedirs(self.profiles_config_dir)
+        # Directory to store profile-specific output templates
         self.templates_dir = os.path.join(self.config_dir, 'templates')
         if not os.path.exists(self.templates_dir):
             os.makedirs(self.templates_dir)
 
-        self.data_dir = data_dir or appdirs.user_data_dir(APP_NAME)
-        self.profiles_data_dir = os.path.join(self.data_dir, 'profiles')
-        if not os.path.exists(self.profiles_data_dir):
-            os.makedirs(self.profiles_data_dir)
+        # General directory for storing application data/state
+        self.data_dir = data_dir or appdirs.user_data_dir('rss-digest')
+        if not os.path.exists(self.data_dir):
+            os.makedirs(self.data_dir)
 
-        main_config_file = os.path.join(self.config_dir, 'config.ini')
-        output_config_file = os.path.join(self.config_dir, 'output.ini')
+        # Directory to store profile-specific state
+        self.profile_data_dir = os.path.join(self.data_dir, 'profiles')
+        if not os.path.exists(self.profile_data_dir):
+            os.makedirs(self.profile_data_dir)
 
-        self._helper_module: Optional[ModuleType] = None
+        self.dirs = (self.config_dir, self.profile_config_dir, self.templates_dir, self.data_dir, self.profile_data_dir)
 
-        super().__init__(main_config_file, output_config_file, existing_main_config_file, existing_output_config_file)
+        self.mkdirs()
 
-    def create_templates_dir(self):
-        """Create a new directory in the global config directory
-        containing the pre-packaged templates.
+        if copy_config:
+            self.copy_installed_configs()
 
-        """
+    # email_data is data required to *send* the email to the user
+    # (as distinct from the recipient email address, which will be
+    # specified in the relevant profile config ini file).
+    
+    def mkdirs(self):
+        for d in self.dirs:
+            if not os.path.exists(d):
+                os.makedirs(d)
 
-        if not os.path.exists(self.templates_dir):
-            os.makedirs(self.templates_dir)
+    def rmdirs(self):
+        for d in self.dirs:
+            if os.path.exists:
+                shutil.rmtree(d)
 
-<<<<<<< Updated upstream
-
-
-    def create_config_dir(self):
-        """Create a new config directory and populate it with the """
-
-    def get_profile_config_dir(self, name: str) -> str:
-        """Get the location of a profile configuration directory.
-
-        :param name: The name of the profile.
-        :return: The path to the relevant directory.
-
-        """
-        return os.path.join(self.profiles_config_dir, name)
-
-    def get_profile_data_dir(self, name: str) -> str:
-        """Get the location of a profile data directory.
-
-        :param name: The name of the profile.
-        :return: The path to the relevant directory.
-
-        """
-        return os.path.join(self.profiles_data_dir, name)
-
-    def get_profile_config(self, name: str) -> ProfileConfig:
-        """Get a ProfileConfig object for a specific profile.
-
-        :param name: The name of the profile.
-        :return: A :class:`ProfileConfig` object for the relevant profile.
-
-        """
-        return ProfileConfig(self, name)
-
-    @property
-    def helper_module(self) -> ModuleType:
-        if self._helper_module is None:
-            sys.path.insert(0, self.config_dir)
-            self._helper_module = import_module('helpers')
-            sys.path.pop(0)
-        return self._helper_module
-
-
-class ProfileConfig(BaseConfig):
-    """A class to control and store profile-specific configuration
-    settings.
-
-    """
-
-    def __init__(self, app_config: AppConfig, profile_name: str,
-                 existing_main_config_file: Optional[str] = None, existing_output_config_file: Optional[str] = None):
-        """Create a new ProfileConfig object.
-
-        :param app_config: An :class:`AppConfig` object storing
-            app-level configuration options.
-        :param profile_name: The name of the profile.
-        :param existing_main_config_file: A path to an existing config.ini file
-            to be copied to the appropriate location.
-        :param existing_output_config_file: A path to an existing output.ini file
-            to be copied to the appropriate location.
-
-        """
-        self.app_config = app_config
-        self.profile_name = profile_name
-        self.config_dir = self.app_config.get_profile_config_dir(profile_name)
-        self.data_dir = self.app_config.get_profile_data_dir(profile_name)
-        for dir in (self.config_dir, self.data_dir):
-            if not os.path.exists(dir):
-                os.makedirs(dir)
-
-        self.opml_file = os.path.join(self.config_dir, 'feeds.opml')
-        self.feeds_db_file = os.path.join(self.data_dir, 'feeds.db')
-        self.last_updated_file = os.path.join(self.data_dir, 'last_updated')
-
-        main_config_file = os.path.join(self.config_dir, 'config.ini')
-        output_config_file = os.path.join(self.config_dir, 'output.ini')
-        super().__init__(main_config_file, output_config_file, existing_main_config_file, existing_output_config_file)
-
-    def get_main_config_value(self, key: str) -> Any:
-        """Get the configuration value for a particular option from the
-        profile's main configuration file, or the app's main
-        configuration file if the option is not set in the profile's
-        configuration file.
-
-        :param key: The name of the option to look up.
-        :return: The specified value, as the correct datatype.
-
-        """
-        logger.debug(f'Getting main config value "{key}" for profile "{self.profile_name}".')
-        val = super().get_main_config_value(key)
-        if val is None:
-            logger.debug('Not found in profile config; searching app config.')
-            val = self.app_config.get_main_config_value(key)
-        else:
-            logger.debug(f'Value is "{val}".')
-        return val
-
-    def get_output_config_value(self, section: str, key: str) -> Any:
-        """Get the configuration value for a particular option from the
-        profile's output configuration file, or the app's output
-        configuration file if the option is not set in the profile's
-        configuration file.
-
-        :param section: The section in the output configuration file to
-            search, corresponding to the type of output, eg, smtp.
-        :param key: The name of the option to look up.
-        :return: The specified value, as the correct datatype.
-
-        """
-        val = super().get_main_config_value(key)
-        if val is None:
-            val = self.app_config.get_main_config_value(key)
-        return val
-=======
     def copy_installed_configs(self):
         logger.info('Copying installed configuration files.')
-        install_site = files().joinpath("data")
+        install_site = files().joinpath("resources")
+        print(f"INSTALL SITE: {install_site}")
         logger.info(f'Looking in {install_site}')
         conf_fpath = install_site.joinpath('config.toml')
         template_dir = install_site.joinpath('templates')
@@ -339,4 +95,3 @@ class ProfileConfig(BaseConfig):
                 shutil.copy(os.path.join(template_dir, t), self.templates_dir)
         except FileNotFoundError:
             raise BadInstallationError(f'Could not find installed configuration files.')
->>>>>>> Stashed changes
