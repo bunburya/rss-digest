@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>rss-digest tutorial &#8212; rss-digest  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="rss-digest-tutorial">
+<h1>rss-digest tutorial<a class="headerlink" href="#rss-digest-tutorial" title="Link to this heading">¶</a></h1>
+<p>This document will explain the basics of how to use rss-digest.</p>
+<div class="toctree-wrapper compound">
+</div>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
+<p>An example of how to install and run <cite>rss-digest</cite> using <a class="reference external" href="https://pipenv.pypa.io/en/stable/">pipenv</a>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">git clone https://github.com/bunburya/rss-digest.git</span>
+<span class="go">cd rss-digest</span>
+<span class="go">pipenv install .</span>
+<span class="go">pipenv run rss-digest</span>
+</pre></div>
+</div>
+<p>rss-digest’s main dependencies are as follows:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://pypi.org/project/reader/">reader</a>, for fetching and storing feeds.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/Jinja2/">jinja2</a>, for formatting the output.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/appdirs/">appdirs</a>, for determining where to store configuration files and state.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/lxml/">lxml</a> and <a class="reference external" href="https://pypi.org/project/lxml-stubs/">lxml-stubs</a> (both optional), for
+generating nicely formatted OPML files.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/pytest/">pytest</a>, for testing.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/requests/">requests</a>, for fetching feeds.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/Sphinx/">sphinx</a>, for documentation.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/pytz/">pytz</a>, for timezone handling.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/beautifulsoup4/">beautifulsoup4</a> for extracting text from HTML
+content.</p></li>
+</ul>
+</section>
+<section id="basic-usage">
+<h2>Basic usage<a class="headerlink" href="#basic-usage" title="Link to this heading">¶</a></h2>
+<p>rss-digest is primarily a command line tool. In order to use it you should have some basic familiarity with the command
+line. Running rss-digest with the <code class="docutils literal notranslate"><span class="pre">--help</span></code> flag will output a message explaining the available arguments and options
+(this also works with subcommands, eg, <code class="docutils literal notranslate"><span class="pre">rss-digest</span> <span class="pre">profile</span> <span class="pre">add</span> <span class="pre">--help</span></code>). The key sub-commands are discussed in more
+detail below.</p>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">¶</a></h2>
+<p>When installed, rss-digest will create a directory called <code class="docutils literal notranslate"><span class="pre">rss-digest</span></code> within the relevant user’s general application
+configuration directory. This is determined using the <a class="reference external" href="https://pypi.org/project/appdirs/">appdirs</a> library and will
+depend on which operating system you are using. For example, on many Linux systems, the directory will be created at
+<code class="docutils literal notranslate"><span class="pre">$HOME/.config/rss-digest/</span></code>.</p>
+<p>Within this directory you will find the following:</p>
+<ol class="arabic simple">
+<li><p>A file named <code class="docutils literal notranslate"><span class="pre">config.ini</span></code>. This is the default main configuration file, which allows you to configure the behaviour
+of rss-digest globally.</p></li>
+<li><p>A file named <code class="docutils literal notranslate"><span class="pre">output.ini</span></code>. This is the default output configuration file, which allows you to configure how
+rss-digest should send the digests that it generates (for example, if you want to send digests by email, this file
+should contain SMTP server and login details).</p></li>
+<li><p>A directory named <code class="docutils literal notranslate"><span class="pre">profiles</span></code>. This directory will contain a directory for each profile that you create. Each such
+profile directory may contain a profile-specific <code class="docutils literal notranslate"><span class="pre">config.ini</span></code> and/or <code class="docutils literal notranslate"><span class="pre">output.ini</span></code> file. Values in those
+profile-specific files will override the global configuration.</p></li>
+<li><p>A directory named <code class="docutils literal notranslate"><span class="pre">templates</span></code>, which contains the templates used by rss-digest to generate output (see below).</p></li>
+</ol>
+<p>rss-digest also stores state (eg, information about previously fetched feeds) in an appropriate directory, again
+determined by <code class="docutils literal notranslate"><span class="pre">appdirs</span></code>. For example, on a Linux system this may be <code class="docutils literal notranslate"><span class="pre">$HOME/.local/share/rss-digest/</span></code>.</p>
+</section>
+<section id="adding-and-configuring-a-profile">
+<h2>Adding and configuring a profile<a class="headerlink" href="#adding-and-configuring-a-profile" title="Link to this heading">¶</a></h2>
+<p>The basic command to add a new profile is <code class="docutils literal notranslate"><span class="pre">profile</span> <span class="pre">add</span></code>. So, if you wanted to add a new profile named “John”, you
+would run the following command:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">rss-digest profile add John</span>
+</pre></div>
+</div>
+<p>This will create an “empty” profile named “John”, with no subscribed feeds and which uses the default application-level
+configuration. If you want to configure the behaviour of rss-digest for this profile, you should copy (not move) the
+global <code class="docutils literal notranslate"><span class="pre">config.ini</span></code> and/or <code class="docutils literal notranslate"><span class="pre">output.ini</span></code> to the profile directory and make the necessary changes.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Currently the only way to configure rss-digest is by manually editing the global or profile-specific <code class="docutils literal notranslate"><span class="pre">config.ini</span></code>
+and <code class="docutils literal notranslate"><span class="pre">output.ini</span></code> files. There is no way to set configuration values directly from the command line.</p>
+</div>
+</section>
+<section id="adding-and-deleting-feeds">
+<h2>Adding and deleting feeds<a class="headerlink" href="#adding-and-deleting-feeds" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">feed</span></code> command has certain sub-command (<code class="docutils literal notranslate"><span class="pre">add</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>, and <code class="docutils literal notranslate"><span class="pre">list</span></code>) for working with feeds.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">add</span></code> sub-command adds a feed and takes, at least, the name of the relevant profile and the URL for the feed.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">rss-digest feed add John https://bankunderground.co.uk/feed/</span>
+</pre></div>
+</div>
+<p>You can also provide the following arguments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--title</span></code>: The title of the feed (if not provided, the URL is used).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--category</span></code>: The category to which the feed belongs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--fetch-title</span></code>: Fetch the feed title from the given URL (overrides a manually specified title).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--test</span></code>: Test that the URL given is for a valid feed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--mark-read</span></code>: Mark all current entries as read, so that on the next run of rss-digest, only subsequent entries will
+be displayed.</p></li>
+</ul>
+<p>For example:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">rss-digest feed add --title &quot;Bank Underground&quot; --category Economics --mark-read John https://bankunderground.co.uk/feed/</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">delete</span></code> sub-command takes the profile name and feed URL and, as you might expect, deletes the relevant feed.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">rss-digest feed delete John https://bankunderground.co.uk/feed/</span>
+</pre></div>
+</div>
+<p>Finally, the <code class="docutils literal notranslate"><span class="pre">list</span></code> sub-command lists all added feeds for the given profile.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">rss-digest feed list John</span>
+</pre></div>
+</div>
+<p>Internally, rss-digest stores feeds in an <a class="reference external" href="https://en.wikipedia.org/wiki/OPML">OPML</a> file called <code class="docutils literal notranslate"><span class="pre">feeds.opml</span></code> in the
+profile config directory. If you have an appropriately formatted OPML file generated by another application, you can
+save it in that location, rather than adding feeds manually. Similarly, you can copy that file for backup purposes or
+use in other applications.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>When parsing or creating OPML files, rss-digest only recognises outline elements of type “category” or “rss”, and only
+supports one level of categories (no sub-categories). Anything else will be ignored. If you provide rss-digest with an
+OPML file containing additional data or a more complex structure, it may be overwritten with a simplified OPML file
+generated by rss-digest itself.</p>
+</div>
+</section>
+<section id="running">
+<h2>Running<a class="headerlink" href="#running" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">run</span></code> command fetches all the feeds for the specified profile, compiles a digest of new or updated entries in each
+feed, sends that digest using the output method specified in the relevant configuration and marks all fetched entries as
+read.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">rss-digest run John</span>
+</pre></div>
+</div>
+<p>If the <code class="docutils literal notranslate"><span class="pre">--forget</span></code> option is passed, rss-digest will not mark new entries as read, so that they will be included again
+on a subsequent run. This can be helpful for testing.</p>
+</section>
+<section id="configuration-options">
+<h2>Configuration options<a class="headerlink" href="#configuration-options" title="Link to this heading">¶</a></h2>
+<p>There are two main configuration files: <code class="docutils literal notranslate"><span class="pre">config.ini</span></code>, which contains options for configuring the behaviour of
+rss-digest generally, and <code class="docutils literal notranslate"><span class="pre">output.ini</span></code>, which contains options relating to how rss-digest should send generated
+output. <code class="docutils literal notranslate"><span class="pre">output.ini</span></code> is a separate file because it may contain sensitive information, such as email addresses and
+login details.</p>
+<p>By default, there is a single <code class="docutils literal notranslate"><span class="pre">config.ini</span></code> and a single <code class="docutils literal notranslate"><span class="pre">output.ini</span></code>, which will govern all profiles. However, you
+can include a profile-specific <code class="docutils literal notranslate"><span class="pre">config.ini</span></code> and/or <code class="docutils literal notranslate"><span class="pre">output.ini</span></code> in the relevant profile’s configuration directory in
+order to modify rss-digest’s behaviour for that profile. When rss-digest is run for a specific profile, it will first
+check in the profile-specific files for configuration values, and will fall back to the global configuration files if it
+can’t find the relevant value.</p>
+<p>As the names suggest, both configuration files are in the <a class="reference external" href="https://en.wikipedia.org/wiki/INI_file">INI</a> format. INI
+files are divided into sections, denoted in square brackets. <code class="docutils literal notranslate"><span class="pre">config.ini</span></code> only has one section, <code class="docutils literal notranslate"><span class="pre">[defaults]</span></code>, which
+contains all configuration options. You can take a look at the skeleton <code class="docutils literal notranslate"><span class="pre">config.ini</span></code> file to familiarise yourself with
+the available options, what they do and their default values.</p>
+<p>The sections in <code class="docutils literal notranslate"><span class="pre">output.ini</span></code> correspond to the output methods that you can specify in <code class="docutils literal notranslate"><span class="pre">config.ini</span></code> (which
+require configuration), ie, you should include an <code class="docutils literal notranslate"><span class="pre">[smtp]</span></code> section or a <code class="docutils literal notranslate"><span class="pre">[file]</span></code> section if you have selected one of
+those output methods. (The other output method, <code class="docutils literal notranslate"><span class="pre">stdout</span></code>, does not require configuration.) Again, you can take a look
+at the skeleton <code class="docutils literal notranslate"><span class="pre">output.ini</span></code> to understand what values need to be provided.</p>
+</section>
+<section id="writing-output-templates">
+<h2>Writing output templates<a class="headerlink" href="#writing-output-templates" title="Link to this heading">¶</a></h2>
+<p>rss-digest allows you to configure how output is formatted. Output is generated using a
+<a class="reference external" href="https://jinja2docs.readthedocs.io/en/stable/">jinja2</a> template. Templates are stored in the <code class="docutils literal notranslate"><span class="pre">templates</span></code> directory
+in the general configuration directory. Any file in that directory whose name does not begin with a <code class="docutils literal notranslate"><span class="pre">\_</span></code> will be
+treated as a template that can be specified in the main configuration. For example, if you set the <code class="docutils literal notranslate"><span class="pre">output</span></code> option to
+<code class="docutils literal notranslate"><span class="pre">plaintext</span></code> in your <code class="docutils literal notranslate"><span class="pre">config.ini</span></code>, rss-digest will look for a file called <code class="docutils literal notranslate"><span class="pre">plaintext</span></code> in the <code class="docutils literal notranslate"><span class="pre">templates</span></code>
+directory and use it to generate the output.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>jinja2 templates can contain arbitrary code which is executed when the output is generated. Therefore, you should not
+use untrusted templates.</p>
+</div>
+<p>A number of templates are provided with rss-digest. These are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">plaintext</span></code>: To generate output as plain text.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">html</span></code>: To generate output as HTML.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">markdown</span></code>: To generate output as markdown.</p></li>
+</ul>
+<p>It’s also possible to create your own templates provided you have a little knowledge of Python and Jinja2. Consult the
+<a class="reference external" href="https://jinja2docs.readthedocs.io/en/stable/templates.html">Jinja2 template design documentation</a> for help on how to
+design your own templates.</p>
+<p>Templates have access to the results of feed updates through a variable named <code class="docutils literal notranslate"><span class="pre">ctx</span></code>. <code class="docutils literal notranslate"><span class="pre">ctx</span></code> is a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">rss_digest.models.Context</span></code> object which contains information about what feeds were updated, what feeds weren’t
+updated and what errors were encountered in the update process. The documentation for <code class="xref py py-mod docutils literal notranslate"><span class="pre">rss_digest.models</span></code> will tell
+you what information you can (ultimately) access through the <code class="docutils literal notranslate"><span class="pre">ctx</span></code> variable and its attributes and properties. Looking
+at the provided templates may also help you in creating your own.</p>
+<p>Jinja2 allows you to effectively split a template over multiple files, by using
+<a class="reference external" href="https://jinja.palletsprojects.com/en/3.0.x/templates/#template-inheritance">template inheritance</a>,
+<a class="reference external" href="https://jinja.palletsprojects.com/en/3.0.x/templates/#include">including files</a> or
+<a class="reference external" href="https://jinja.palletsprojects.com/en/3.0.x/templates/#import">importing macros</a>. If you want to create a file which
+is not a final template itself but is extended/included/imported by a template, you can just give it a name beginning
+with <code class="docutils literal notranslate"><span class="pre">\_</span></code> and place it in the <code class="docutils literal notranslate"><span class="pre">templates</span></code> directory.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Any whitespace in Jinja2 templates will be rendered in the output. Therefore, if you are creating a template for a
+format where whitespace is faithfully displayed to the end user (eg, plain text), then you should be careful about
+what whitespace you include. (HTML, for example, does not have this problem, as whitespace is ignored and spacing is
+controlled instead through HTML tags.)</p>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">rss-digest</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, bunburya.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

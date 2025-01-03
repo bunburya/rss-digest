@@ -11,7 +11,15 @@ This document will explain the basics of how to use rss-digest.
 Installation
 ------------
 
-TODO
+An example of how to install and run `rss-digest` using `pipenv <https://pipenv.pypa.io/en/stable/>`_:
+
+.. code-block:: console
+
+  git clone https://github.com/bunburya/rss-digest.git 
+  cd rss-digest
+  pipenv install .
+  pipenv run rss-digest
+
 
 rss-digest's main dependencies are as follows:
 
@@ -24,6 +32,9 @@ rss-digest's main dependencies are as follows:
 * `requests <https://pypi.org/project/requests/>`_, for fetching feeds.
 * `sphinx <https://pypi.org/project/Sphinx/>`_, for documentation.
 * `pytz <https://pypi.org/project/pytz/>`_, for timezone handling.
+* `beautifulsoup4 <https://pypi.org/project/beautifulsoup4/>`_ for extracting text from HTML
+  content.
+
 
 Basic usage
 -----------
@@ -65,7 +76,7 @@ Adding and configuring a profile
 The basic command to add a new profile is ``profile add``. So, if you wanted to add a new profile named "John", you
 would run the following command:
 
-.. code-block:: bash
+.. code-block:: console
 
   rss-digest profile add John
 
@@ -78,13 +89,13 @@ global ``config.ini`` and/or ``output.ini`` to the profile directory and make th
   and ``output.ini`` files. There is no way to set configuration values directly from the command line.
 
 Adding and deleting feeds
------------------
+-------------------------
 
 The ``feed`` command has certain sub-command (``add``, ``delete``, and ``list``) for working with feeds.
 
 The ``add`` sub-command adds a feed and takes, at least, the name of the relevant profile and the URL for the feed.
 
-.. code-block:: bash
+.. code-block:: console
 
   rss-digest feed add John https://bankunderground.co.uk/feed/
 
@@ -99,19 +110,19 @@ You can also provide the following arguments:
 
 For example:
 
-.. code-block:: bash
+.. code-block:: console
 
   rss-digest feed add --title "Bank Underground" --category Economics --mark-read John https://bankunderground.co.uk/feed/
 
 The ``delete`` sub-command takes the profile name and feed URL and, as you might expect, deletes the relevant feed.
 
-.. code-block:: bash
+.. code-block:: console
 
   rss-digest feed delete John https://bankunderground.co.uk/feed/
 
 Finally, the ``list`` sub-command lists all added feeds for the given profile.
 
-.. code-block:: bash
+.. code-block:: console
 
   rss-digest feed list John
 
@@ -133,7 +144,7 @@ The ``run`` command fetches all the feeds for the specified profile, compiles a 
 feed, sends that digest using the output method specified in the relevant configuration and marks all fetched entries as
 read.
 
-.. code-block:: bash
+.. code-block:: console
 
   rss-digest run John
 
@@ -184,7 +195,6 @@ A number of templates are provided with rss-digest. These are:
 * ``plaintext``: To generate output as plain text.
 * ``html``: To generate output as HTML.
 * ``markdown``: To generate output as markdown.
-* ``rss``: To generate an RSS file with all updated entries. (Not yet implemented)
 
 It's also possible to create your own templates provided you have a little knowledge of Python and Jinja2. Consult the
 `Jinja2 template design documentation <https://jinja2docs.readthedocs.io/en/stable/templates.html>`_ for help on how to
