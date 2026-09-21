@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.12.17,<0.13"]
+build-backend = "uv_build"
 
 [project]
 name = "rss-digest"
@@ -8,16 +8,13 @@ version = "0.1"
 dependencies = [
     'reader',
     'jinja2',
-    'appdirs',
+    'platformdirs',
     'lxml',
-    'lxml-stubs',
-    'pytest',
     'requests',
     'sphinx',
     'pytz',
-    'tomli',
     'beautifulsoup4',
-    'importlib_resources'
+    "sgmllib3k>=1.0.0",
 ]
 authors = [
   { name="bunburya", email="dev@bunburya.eu" },
@@ -35,3 +32,9 @@ classifiers = [
 
 [project.scripts]
 rss-digest = "rss_digest:main"
+
+[dependency-groups]
+dev = [
+    "lxml-stubs>=0.5.1",
+    "pytest>=8.4.2",
+]

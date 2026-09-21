@@ -120,10 +120,13 @@ class CLI:
         each feed and generating a digest.
 
         """
-        self._app.run(
-            profile_name=args.profile_name,
-            save=not args.forget,
-        )
+        try:
+            self._app.run(
+                profile_name=args.profile_name,
+                save=not args.forget,
+            )
+        except ProfileNotFoundError:
+            err(f'Profile not found: {args.profile_name}')
 
 
 def get_arg_parser(cli: CLI) -> argparse.ArgumentParser:

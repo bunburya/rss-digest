@@ -9,9 +9,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, tzinfo
 from typing import Optional, List
 
-import reader
 from pytz import timezone
 from reader import Reader
+from reader import types as reader_types
 
 from rss_digest.exceptions import FeedNotFoundError
 from rss_digest.feeds import FeedCategory
@@ -45,8 +45,8 @@ class ConfigContext:
         config = profile.config
         return ConfigContext(
             config.get('name'),
-            config.get('max_displayed_entries'),
-            config.get('max_displayed_feeds'),
+            config.get('max_displayed_entries', 10),
+            config.get('max_displayed_feeds', 10),
         )
 
 
@@ -60,7 +60,7 @@ class ContentResult:
     language: Optional[str]  #: The language of the content.
 
     @classmethod
-    def from_reader(cls, content: reader.types.Content) -> ContentResult:
+    def from_reader(cls, content: reader_types.Content) -> ContentResult:
         """Generate a :class:`ContentResult` object from
         a :class:`reader.Content` object.
 
@@ -88,7 +88,7 @@ class EntryResult:
     last_updated_utc: Optional[datetime]  #: When the entry was last updated, in UTC.
 
     @classmethod
-    def from_reader(cls, entry: reader.types.Entry) -> EntryResult:
+    def from_reader(cls, entry: reader_types.Entry) -> EntryResult:
         """Generate a :class:`rss_digest.models.EntryResult` object from a
         :class:`reader.Entry` object.
 
@@ -97,7 +97,7 @@ class EntryResult:
         return EntryResult(
             title=entry.title,
             link=entry.link,
-            author=entry.author,
+            author=entry.authors_str,
             published_utc=entry.published,
             summary=entry.summary,
             content=[ContentResult.from_reader(c) for c in entry.content],
@@ -232,7 +232,7 @@ class FeedResult:
         return self.all_new_entries_count - self.visible_new_entries_count
 
     @classmethod
-    def from_reader(cls, feed: reader.types.Feed, entries: List[EntryResult], category: Optional[str],
+    def from_reader(cls, feed: reader_types.Feed, entries: List[EntryResult], category: Optional[str],
                     profile: Profile) -> FeedResult:
         """Generate a :class:`FeedResult` object from a :class:`reader.Feed` object.
 
@@ -294,7 +294,7 @@ class DateTimeHelper:
         """Format a :class:`datetime` object as a string."""
         return dt.strftime(self.format) if dt is not None else None
 
-    def local_formatted(self, dt: datetime) -> str:
+    def local_formatted(self, dt: Optional[datetime]) -> Optional[str]:
         """Convert a :class:`datetime` object to the user's local
         timezone and format as a string.
 
@@ -308,7 +308,7 @@ class DateTimeHelper:
         """
         config = profile.config
         return DateTimeHelper(
-            config.get('datetime_format'),
+            config.get('datetime_format', "%Y-%m-%d %H:%M:%S"),
             timezone(config['timezone'])
         )
 
@@ -404,7 +404,7 @@ class Context:
         return len(self.other_feeds)
 
     @cached_property
-    def other_feeds_titles(self) -> List[str]:
+    def other_feeds_titles(self) -> list[Optional[str]]:
         """The titles of other feeds, as a list of strings."""
         return [f.title for f in self.other_feeds]
 
@@ -415,9 +415,9 @@ class Context:
 
         """
         c = self.updated_categories
-        return (len(c) > 1) or (c and c[0].name is not None)
+        return (len(c) > 1) or (bool(c) and (c[0].name is not None))
 
-    def local_format(self, dt: datetime) -> str:
+    def local_format(self, dt: Optional[datetime]) -> Optional[str]:
         """A "shortcut" to DateTimeHelper.local_formatted, to save
         typing (as we're likely to use that function a lot in
         templates).

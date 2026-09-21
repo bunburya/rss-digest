@@ -5,9 +5,9 @@ import os
 import shutil
 from json import dump, load
 from typing import Optional
-from importlib_resources import files
+from importlib.resources import files
 
-import appdirs
+import platformdirs
 
 from rss_digest.exceptions import BadInstallationError
 
@@ -33,7 +33,7 @@ class Config:
     def __init__(self, config_dir: Optional[str] = None, data_dir: Optional[str] = None, copy_config: bool = False):
 
         # General config directory
-        self.config_dir = config_dir or appdirs.user_config_dir('rss-digest')
+        self.config_dir = config_dir or platformdirs.user_config_dir('rss-digest')
         if not os.path.exists(self.config_dir):
             os.makedirs(self.config_dir)
 
@@ -52,7 +52,7 @@ class Config:
             os.makedirs(self.templates_dir)
 
         # General directory for storing application data/state
-        self.data_dir = data_dir or appdirs.user_data_dir('rss-digest')
+        self.data_dir = data_dir or platformdirs.user_data_dir('rss-digest')
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
 
@@ -94,3 +94,6 @@ class Config:
                 shutil.copy(os.path.join(template_dir, t), self.templates_dir)
         except FileNotFoundError:
             raise BadInstallationError(f'Could not find installed configuration files.')
+
+    def get_profile_config_dir(self, name: str) -> str:
+        return os.path.join(self.profile_config_dir, name)

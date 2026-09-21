@@ -7,8 +7,8 @@ from typing import Sequence
 
 import logging
 
-from rss_digest.config import AppConfig
-from rss_digest.feedlist import FeedList
+from rss_digest.config import Config
+from rss_digest.feeds import FeedList
 
 logging.getLogger().setLevel(logging.DEBUG)
 
@@ -25,30 +25,28 @@ def get_test_dir(name: str) -> str:
     return test_dir
 
 def get_test_config(name: str,
-                    main_config_file: str = DEFAULT_MAIN_CONFIG,
-                    output_config_file: str = DEFAULT_OUTPUT_CONFIG,
-                    clean: bool = True,) -> AppConfig:
+                    clean: bool = True,) -> Config:
     test_dir = get_test_dir(name)
     if clean and os.path.exists(test_dir):
         shutil.rmtree(test_dir)
     config_dir = os.path.join(test_dir, 'config')
     data_dir = os.path.join(test_dir, 'data')
-    config = AppConfig(config_dir, data_dir, main_config_file, output_config_file)
+    config = Config(config_dir, data_dir)
     return config
 
 class RSSDigestTestCaseBase(unittest.TestCase):
 
     def assertFeedTitlesAre(self, feedlist: FeedList, feeds: Sequence):
         """Assert that the titles of the feeds in ``feedlist`` are as
-         set out in ``feeds``.
+         set out in ``feeds`` Order does not matter.
 
          """
         feednames = [f.title for f in feedlist]
-        self.assertSequenceEqual(feednames, feeds)
+        self.assertSequenceEqual(sorted(feednames), sorted(feeds))
 
     def assertCategoriesAre(self, feedlist: FeedList, categories: Sequence):
         """Assert that the categories in ``feedlist`` are as set out in
-        ``feeds``.
+        ``feeds``. Order matters.
 
          """
         self.assertSequenceEqual(feedlist.category_names, categories)

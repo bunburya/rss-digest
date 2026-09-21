@@ -17,7 +17,6 @@ class RSSDigest:
 
     def __init__(self, config: Config):
         self.config = config
-        self._profile_cache: dict[str, Profile] = {}
         self._output_generator = OutputGenerator(config)
         self._output_sender = SendmailOutputSender(config)
 
@@ -37,7 +36,9 @@ class RSSDigest:
         """
         if self.profile_exists(name):
             raise ProfileExistsError(f'Profile already exists: {name}')
-        return Profile(self.config, name)
+        profile = Profile(self.config, name)
+        profile.mkdirs()
+        return profile
 
 
     def delete_profile(self, profile_name: str):
@@ -49,12 +50,10 @@ class RSSDigest:
             raise ProfileNotFoundError(f'Profile "{profile_name}" does not exist.')
 
     def get_profile(self, profile_name: str) -> Profile:
-        if profile_name in self._profile_cache:
-            profile = self._profile_cache[profile_name]
+        if self.profile_exists(profile_name):
+            return Profile(self.config, profile_name)
         else:
-            profile = Profile(self.config, profile_name)
-            self._profile_cache[profile_name] = profile
-        return profile
+            raise ProfileNotFoundError(profile_name)
 
     def add_feed(self, profile_name: str, feed_url: str, feed_title: str, category: Optional[str] = None,
                  test_feed: bool = False, mark_read: bool = False, fetch_title: bool = False,
@@ -75,8 +74,13 @@ class RSSDigest:
         profile = self.get_profile(profile_name)
         return profile.add_feed(feed_url, feed_title, category, test_feed, mark_read, fetch_title, write)
 
-    def delete_feeds(self, profile_name: str, feed_url: Optional[str] = WILDCARD, feed_title: Optional[str] = WILDCARD,
-                     category: Optional[str] = WILDCARD) -> int:
+    def delete_feeds(
+            self,
+            profile_name: str,
+            feed_url: Optional[str] = WILDCARD,
+            feed_title: Optional[str] = WILDCARD,
+            category: Optional[str] = WILDCARD
+    ) -> int:
         """Delete all feeds for the given profile and matching the given
         title, URL and category.
 

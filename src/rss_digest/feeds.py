@@ -6,12 +6,13 @@ from __future__ import annotations
 import logging
 
 from collections import OrderedDict
+from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from email.utils import parsedate_to_datetime, format_datetime
-from typing import Optional, List, Union
+from typing import Optional, List, Union, cast
 
-from rss_digest.exceptions import BadOPMLError, CategoryExistsError
+from rss_digest.exceptions import BadOPMLError, CategoryExistsError, FeedExistsError
 
 try:
     from lxml.etree import ElementTree, SubElement, Element, parse, tostring
@@ -41,30 +42,28 @@ WILDCARD = WildCardType()
 
 
 @dataclass
-class FeedSearch:
+class FeedQuery:
     """A class for searching for Feed instances. A FeedSearch will
     evaluate as equal to a Feed if all of the FeedSearch's non-None
     values match the equivalent values of the Feed.
     """
 
-    name: Optional[str] = None
-    xml_url: Optional[str] = None
-    category: Optional[str] = None
+    title: Optional[str | WildCardType] = None
+    xml_url: Optional[str | WildCardType] = None
+    category: Optional[str | WildCardType] = None
 
     def __post_init__(self):
-        if self.name is None:
-            self.name = WILDCARD
+        if self.title is None:
+            self.title = WILDCARD
         if self.xml_url is None:
             self.xml = WILDCARD
         if self.category is None:
             self.category = WILDCARD
 
-    def __eq__(self, other):
+    def check_feed(self, other: Feed):
         return all((
-            isinstance(other, Feed),
-            self.name == other.title,
+            self.title == other.title,
             self.xml_url == other.xml_url,
-            self.category == other.category
         ))
 
 
@@ -74,13 +73,12 @@ class Feed:
 
     title: str
     xml_url: str
-    category: Optional[str] = None
 
     def to_opml(self) -> Element:
         return Element('outline', {'type': 'rss', 'text': self.title, 'xmlUrl': self.xml_url})
 
     @staticmethod
-    def from_opml(elem: Element, category: Optional[str] = None) -> 'Feed':
+    def from_opml(elem: Element) -> 'Feed':
         attr = dict(elem.attrib)
         if 'text' in attr:
             title = attr.pop('text')
@@ -89,7 +87,7 @@ class Feed:
         else:
             logging.warning('RSS outline element has neither "text" nor "title" attribute.')
             title = ''
-        return Feed(title=title, xml_url=attr['xmlUrl'], category=category)
+        return Feed(title=title, xml_url=attr['xmlUrl'])
 
 
 @dataclass
@@ -97,24 +95,26 @@ class FeedCategory:
     """A representation of a category of feeds."""
 
     name: Optional[str]
-    feeds: List[Feed] = field(default_factory=list)
+    feeds: list[Feed] = field(default_factory=list)
 
     def add_feed(self, feed: Feed, index: Optional[int] = None):
+        for f in self.feeds:
+            if f.xml_url == feed.xml_url:
+                raise FeedExistsError(f"Feed with xml_url {f.xml_url} already exists.")
         if index is None:
             self.feeds.append(feed)
         else:
             self.feeds.insert(index, feed)
 
-    def remove_feeds(self, feed: Union[Feed, FeedSearch]) -> int:
+    def remove_feeds(self, feed_query: FeedQuery) -> int:
         """Remove all feeds matching the given object.
 
-        :param feed: The feed to remove, as a :class:`Feed` or a :class:`FeedSearch`. All feeds which equal the
-            ``feed`` object will be removed.
+        :param feed_query: A :class:`FeedSearch` describing which feeds to remove.
         :return: The number of feeds removed.
 
         """
         num_feeds = len(self.feeds)
-        self.feeds = list(filter(lambda f: f != feed, self.feeds))
+        self.feeds = list(filter(lambda f: not feed_query.check_feed(f), self.feeds))
         return num_feeds - len(self.feeds)
 
     def extend(self, other: FeedCategory):
@@ -188,7 +188,7 @@ class FeedList:
         """Check if this feed list has a category of the given name."""
         return category in self.category_dict.keys()
 
-    def add_category(self, name: str, overwrite: bool = False):
+    def add_category(self, name: Optional[str], overwrite: bool = False):
         if name in self.category_dict and not overwrite:
             raise CategoryExistsError(f'Category with name "{name}" already exists.')
         self.category_dict[name] = FeedCategory(name)
@@ -207,10 +207,12 @@ class FeedList:
         """
         if category not in self.category_dict:
             self.add_category(category)
-        self.category_dict[category].add_feed(Feed(feed_name, xml_url, category))
+        self.category_dict[category].add_feed(Feed(feed_name, xml_url))
 
-    def remove_feeds(self, feed_url: Optional[str] = WILDCARD, feed_title: Optional[str] = WILDCARD,
-                     category: Optional[str] = WILDCARD) -> int:
+    def remove_feeds(self,
+                     feed_url: Optional[str | WildCardType] = WILDCARD,
+                     feed_title: Optional[str | WildCardType] = WILDCARD,
+                     category: Optional[str | WildCardType] = WILDCARD) -> int:
         """Remove all feeds matching the given title, URL and category.
 
         :param feed_url: URL of feed to remove.
@@ -219,11 +221,11 @@ class FeedList:
         :return: The total number of feeds removed.
 
         """
-        query = FeedSearch(feed_title, feed_url, category)
+        query = FeedQuery(feed_title, feed_url, category)
         logger.debug(f'Deleting feeds matching {query}')
         empty_categories = []
         if category is not WILDCARD:
-            to_search = [category]
+            to_search: list[Optional[str]] = [cast(Optional[str], category)]
         else:
             to_search = self.category_names
         removed = 0
@@ -231,7 +233,7 @@ class FeedList:
             # logger.debug(f'Removing matching feeds from {category}.')
             removed += self.category_dict[category].remove_feeds(query)
             # logger.debug(f'Size of category is not {len(self.feeds[category])}')
-            if (not self.category_dict[category]) and (category is not None):
+            if (not self.category_dict[category].feeds) and (category is not None):
                 logger.debug(f'Category "{category}" is empty; removing.')
                 empty_categories.append(category)
         logger.debug(f'Removed {removed} feeds.')
@@ -241,7 +243,7 @@ class FeedList:
         return removed
 
     @property
-    def category_names(self) -> List[str]:
+    def category_names(self) -> List[Optional[str]]:
         return list(self.category_dict.keys())
 
     @property
@@ -294,27 +296,14 @@ class FeedList:
     def get_feed_by_url(self, url: str) -> Feed:
         return self.url_to_feed[url]
 
-    def sort_by_category(self, urls: List[str]) -> OrderedDict[str, List[str]]:
-        """Arrange a list of URLs by category.
-
-        :param urls: A list of URLs to sort.
-        :return: An ordered mapping of category names to lists of URLs.
-
-        """
-        categories = OrderedDict()
-        for url in urls:
-            feed = self.get_feed_by_url(url)
-            c = feed.category
-            if c in categories:
-                categories[c].append(url)
-            else:
-                categories[c] = [url]
-        return categories
-
     @property
     def feeds(self) -> List[Feed]:
         """A list of all feeds."""
         return sum([c.feeds for c in self.category_dict.values()], start=[])
+
+    def copy(self) -> FeedList:
+        """Return a deepcopy of this instance."""
+        return deepcopy(self)
 
 
 def parse_opml_elem(elem: Element) -> FeedList:
@@ -325,8 +314,8 @@ def parse_opml_elem(elem: Element) -> FeedList:
 
     """
 
-    feeds = OrderedDict()
-    feeds[None] = FeedCategory(None)
+    category_dict = OrderedDict()
+    category_dict[None] = FeedCategory(None)
 
     head = elem.find('head')
     if head is not None:
@@ -353,16 +342,16 @@ def parse_opml_elem(elem: Element) -> FeedList:
         if outline_type == 'category':
             category = FeedCategory.from_opml(child)
             name = category.name
-            if name in feeds:
-                feeds[name].extend(category)
+            if name in category_dict:
+                category_dict[name].extend(category)
             else:
-                feeds[name] = category
+                category_dict[name] = category
         elif outline_type == 'rss':
-            feeds[None].add_feed(Feed.from_opml(child))
+            category_dict[None].add_feed(Feed.from_opml(child))
         else:
             logger.warning(f'Found outline element of unrecognised type "{outline_type}". Ignoring.')
 
-    return FeedList(category_dict=feeds, title=title, date_modified=date_modified)
+    return FeedList(category_dict=category_dict, title=title, date_modified=date_modified)
 
 
 def parse_opml_file(fpath: str) -> FeedList:
